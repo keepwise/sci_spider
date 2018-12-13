@@ -17,6 +17,7 @@ import tkinter
 from tkinter import ttk
 import threading
 import tkinter.filedialog
+import tkinter.messagebox
 
 
 
@@ -316,7 +317,6 @@ def scrape_sci(seed_url):
     procced_url_num = 0
     processed_origin_num = 0
 
-    gui.progress_bar.start()
     while orginal_papers_queue:
 
         original_url = orginal_papers_queue.popleft()
@@ -327,10 +327,9 @@ def scrape_sci(seed_url):
         procced_url_num += 1
         processed_origin_num += 1
         gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
-        gui.progress_value = round((procced_url_num/orginal_total)*100)
-        
-        gui.window.update()
-        print("progress_value: %d" % gui.progress_value)
+
+        #gui.progress_bar.update()
+        print("progress_value: %d" % gui.progress_value.get())
         original_papers_lst.append(paper)
 
         if len(paper['citing_url'])>1:
@@ -351,9 +350,12 @@ def scrape_sci(seed_url):
                 gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
                 write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
                 cur_cite += 1
-    gui.progress_bar.stop()
+        gui.progress_value.set((procced_url_num / orginal_total) * 100)
+
     write_shoulu(original_papers_lst)
     gui.processing_info.insert(0, "顺利完成")
+    gui.bgn_button['state']= 'normal'
+    tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
 def scrape_jcr():
     pass
@@ -392,7 +394,7 @@ class Spider_gui(object):
         self.fenqu_checkbutton = tkinter.Checkbutton(self.window, text="中科院分区", onvalue=True, offvalue=False,
                                                      width=15, variable=self.fenqu_opt)
 
-        self.progress_bar = tkinter.ttk.Progressbar(self.window,orient="horizontal", length=350, mode='determinate',variable=self.progress_value)
+        self.progress_bar = tkinter.ttk.Progressbar(self.window,orient="horizontal", length=350, mode='determinate',variable=self.progress_value, maximum=100)
         self.processing_info = tkinter.Listbox(self.window, width=50)
 
         self.bgn_button = tkinter.Button(self.window, command=self.begin_crawl, text="开始")
@@ -414,6 +416,7 @@ class Spider_gui(object):
         self.bgn_button.grid(row=6, column=2, sticky="e")
 
     def begin_crawl(self):
+        gui.bgn_button['state'] = 'disabled'
         url = self.url_input.get()
         t1 = threading.Thread(target=scrape_sci,args=(url,))
         t1.start()
