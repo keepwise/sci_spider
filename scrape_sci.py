@@ -46,6 +46,8 @@ document.styles["Normal"].paragraph_format.space_after = docx.shared.Pt(1)
 document.styles["Default Paragraph Font"].font.name = "Times New Roman"
 document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
+original_papers_lst = []
+
 def get_papers_queue(seed_url):
 
     global url_crawled_num, num_retries, delay, proxy,headers
@@ -165,6 +167,10 @@ def get_paper_record(url):
         paper['wos_no'] = wos_no
         paper['issn']  = issn
         paper['eissn'] = eissn
+        #自引次数
+        paper['ziyin'] = 0
+        #他引次数
+        paper['tayin'] = 0
     except Exception as e:
 
             print("获取文章详细信息失败,url: %s " % url)
@@ -236,10 +242,11 @@ def write_shoulu(original_paper_lst):
 
         document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+".docx")
 
-def write_word(record, record_type,cite_total=0, cur_cite=0):
+def write_word(original_paper_no, record_type,cite_total=0, cur_cite=0):
     #record_type注明是原文还是引文
 
-    global document, wroten_original_num
+    global document, wroten_original_num, original_papers_lst
+    record = original_papers_lst[original_paper_no]
     if record_type == "original":
         if wroten_original_num == 0:
 
@@ -283,14 +290,17 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
         p.add_run(record['source'])
 
         p = document.add_paragraph("", style="yinwen")
+        yinyong_paragraph_position = len(document.paragraphs)-1
+
         p.add_run("引用文献", style="sci_heading")
         p.add_run(": (自引").bold = True
         p.add_run("    ", style="sci_heading")
         p.add_run("篇  ").bold = True
-
         p.add_run("他引").bold = True
         p.add_run("    ", style="sci_heading")
         p.add_run("篇  )").bold = True
+
+        original_papers_lst[original_paper_no]['yinyong_paragraph_position'] = yinyong_paragraph_position
     if record_type == "citation":
         document.add_paragraph("Record %d of %d" % (cur_cite, cite_total), style="yinwen")
         p = document.add_paragraph("", style="yinwen")
@@ -308,12 +318,36 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
     #print(str(gui.directory_input.get()).strip())
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+".docx")
 
+def ziyin_tayin(original_paper_no,citation):
+    '''区分自引他引，并写入word文档'''
+    global original_papers_lst
+    original_authors = original_papers_lst[original_paper_no]['author']
+    original_authors_lst = original_authors.split(";")
+    original_authors_lst = [str(x).strip() for x in original_papers_lst]
+    #生成类似下述列表 [0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"
+
+    citation_authors = citation['author']
+
+    document.add_paragraph("Record %d of %d" % (cur_cite, cite_total), style="yinwen")
+    p = document.add_paragraph("", style="yinwen")
+    p.add_run("Title: ").bold = True
+    p.add_run(record['title'])
+
+    p = document.add_paragraph("", style="yinwen")
+    p.add_run("Author(s): ").bold = True
+    p.add_run(record['author'])
+
+    p = document.add_paragraph("", style="yinwen")
+    p.add_run("Source: ").bold = True
+    p.add_run(record['source'])
+
 def scrape_sci(seed_url):
 
+    global original_papers_lst
     orginal_papers_queue = get_papers_queue(seed_url)
     orginal_total = len(orginal_papers_queue)
     throttle = common.Throttle(delay)
-    original_papers_lst = []
+
     procced_url_num = 0
     processed_origin_num = 0
 
