@@ -352,6 +352,8 @@ def scrape_sci(seed_url):
     write_shoulu(original_papers_lst)
     gui.processing_info.insert(0, "顺利完成")
 
+def scrape_jcr():
+    pass
 
 class Spider_gui(object):
 
