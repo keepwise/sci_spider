@@ -14,8 +14,10 @@ from docx.enum.text import WD_COLOR_INDEX
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 import tkinter
+from tkinter import ttk
 import threading
 import tkinter.filedialog
+
 
 
 
@@ -29,6 +31,7 @@ headers = {
     "content-type": "text/html;charset=UTF-8",
     "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:63.0) Gecko/20100101 Firefox/63.0"
 }
+
 url_crawled_num = 0  #爬取的原文数量
 num_retries = 2   #爬取链接时尝试的次数
 delay = 5   #请求间延迟的时间
@@ -97,9 +100,6 @@ def get_paper_record(url):
         SourceList = html_emt.xpath(
             "//div[contains(@class,'block-record-info-source')]/p[@class='FR_field']/node()/text() | //div[contains(@class,'block-record-info-source')]/p[@class='FR_field']/text()")
 
-        # print(SourceList)
-
-        # SourceList = SourceList.remove("\n")
         source = SourceTitle + " "
 
         i = 0
@@ -306,12 +306,15 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
 
     #print(str(gui.directory_input.get()).strip())
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+".docx")
+
 def scrape_sci(seed_url):
 
     orginal_papers_queue = get_papers_queue(seed_url)
+    orginal_total = len(orginal_papers_queue)
     throttle = common.Throttle(delay)
     original_papers_lst = []
     procced_url_num = 0
+    processed_origin_num = 0
 
     while orginal_papers_queue:
 
@@ -321,7 +324,11 @@ def scrape_sci(seed_url):
         throttle.wait(original_url)
         paper = get_paper_record(original_url)
         procced_url_num += 1
+        processed_origin_num += 1
         gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
+        gui.progress_value = round((procced_url_num/orginal_total)*100)
+
+        print("progress_value: %d" % gui.progress_value)
         original_papers_lst.append(paper)
 
         if len(paper['citing_url'])>1:
@@ -358,6 +365,7 @@ class Spider_gui(object):
         self.path = tkinter.StringVar()
         self.jcr_opt = tkinter.BooleanVar()
         self.fenqu_opt = tkinter.BooleanVar()
+        self.progress_value = tkinter.IntVar()
 
         self.jcr_opt.set(False)
         self.fenqu_opt.set(False)
@@ -379,6 +387,7 @@ class Spider_gui(object):
         self.fenqu_checkbutton = tkinter.Checkbutton(self.window, text="中科院分区", onvalue=True, offvalue=False,
                                                      width=15, variable=self.fenqu_opt)
 
+        self.progress_bar = tkinter.ttk.Progressbar(self.window,orient="horizontal", length=350, mode='determinate',variable=self.progress_value)
         self.processing_info = tkinter.Listbox(self.window, width=50)
 
         self.bgn_button = tkinter.Button(self.window, command=self.begin_crawl, text="开始")
@@ -395,9 +404,9 @@ class Spider_gui(object):
         self.bianhao_input.grid(row=3, column=2, sticky="w")
         self.JCR_checkbutton.grid(row=3, column=2)
         self.fenqu_checkbutton.grid(row=3, column=2, sticky="e")
-
-        self.processing_info.grid(row=4, column=2)
-        self.bgn_button.grid(row=5, column=2, sticky="e")
+        self.progress_bar.grid(row=4,column=2)
+        self.processing_info.grid(row=5, column=2)
+        self.bgn_button.grid(row=6, column=2, sticky="e")
 
     def begin_crawl(self):
         url = self.url_input.get()
