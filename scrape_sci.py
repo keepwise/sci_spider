@@ -316,6 +316,7 @@ def scrape_sci(seed_url):
     procced_url_num = 0
     processed_origin_num = 0
 
+    gui.progress_bar.start()
     while orginal_papers_queue:
 
         original_url = orginal_papers_queue.popleft()
@@ -327,7 +328,8 @@ def scrape_sci(seed_url):
         processed_origin_num += 1
         gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
         gui.progress_value = round((procced_url_num/orginal_total)*100)
-
+        
+        gui.window.update()
         print("progress_value: %d" % gui.progress_value)
         original_papers_lst.append(paper)
 
@@ -349,6 +351,7 @@ def scrape_sci(seed_url):
                 gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
                 write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
                 cur_cite += 1
+    gui.progress_bar.stop()
     write_shoulu(original_papers_lst)
     gui.processing_info.insert(0, "顺利完成")
 
