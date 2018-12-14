@@ -47,6 +47,7 @@ document.styles["Default Paragraph Font"].font.name = "Times New Roman"
 document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
 original_papers_lst = []
+cur_original_paper_no = 0
 
 def get_papers_queue(seed_url):
 
@@ -242,11 +243,11 @@ def write_shoulu(original_paper_lst):
 
         document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+".docx")
 
-def write_word(original_paper_no, record_type,cite_total=0, cur_cite=0):
+def write_word(record, record_type,cite_total=0, cur_cite=0):
     #record_type注明是原文还是引文
 
-    global document, wroten_original_num, original_papers_lst
-    record = original_papers_lst[original_paper_no]
+    global document, wroten_original_num, original_papers_lst, cur_original_paper_no
+
     if record_type == "original":
         if wroten_original_num == 0:
 
@@ -300,34 +301,24 @@ def write_word(original_paper_no, record_type,cite_total=0, cur_cite=0):
         p.add_run("    ", style="sci_heading")
         p.add_run("篇  )").bold = True
 
-        original_papers_lst[original_paper_no]['yinyong_paragraph_position'] = yinyong_paragraph_position
+        original_papers_lst[cur_original_paper_no]['yinyong_paragraph_position'] = yinyong_paragraph_position
     if record_type == "citation":
-        document.add_paragraph("Record %d of %d" % (cur_cite, cite_total), style="yinwen")
-        p = document.add_paragraph("", style="yinwen")
-        p.add_run("Title: ").bold = True
-        p.add_run(record['title'])
-
-        p = document.add_paragraph("", style="yinwen")
-        p.add_run("Author(s): ").bold = True
-        p.add_run(record['author'])
-
-        p = document.add_paragraph("", style="yinwen")
-        p.add_run("Source: ").bold = True
-        p.add_run(record['source'])
+        ziyin_tayin(record,cite_total,cur_cite)
 
     #print(str(gui.directory_input.get()).strip())
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+".docx")
 
-def ziyin_tayin(original_paper_no,citation,cite_total=0, cur_cite=0):
+def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     '''区分自引他引，并写入word文档'''
-    global original_papers_lst
-    original_authors = original_papers_lst[original_paper_no]['author']
+    global original_papers_lst,cur_original_paper_no
+
+    original_authors = original_papers_lst[cur_original_paper_no]['author']
     original_authors_lst = original_authors.split(";")
     original_authors_lst = [str(x).strip() for x in original_papers_lst]
     #生成类似下述列表 [0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"
 
     citation_authors = citation['author']
-    record = original_papers_lst[original_paper_no]
+    record = original_papers_lst[cur_original_paper_no]
 
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Record %d of %d" % (cur_cite, cite_total)).bold = True
@@ -345,7 +336,7 @@ def ziyin_tayin(original_paper_no,citation,cite_total=0, cur_cite=0):
             p.add_run(record['author'][author_start:(author_start+author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
             p.add_run(record['author'][(author_start + author_len):])
 
-            original_authors_lst[original_paper_no]['ziyin'] += 1
+            original_papers_lst[cur_original_paper_no]['ziyin'] += 1
             break
     else:
         #如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
@@ -362,7 +353,7 @@ def ziyin_tayin(original_paper_no,citation,cite_total=0, cur_cite=0):
                     p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
                     p.add_run(record['author'][(author_start + author_len):])
 
-                    original_authors_lst[original_paper_no]['ziyin'] += 1
+                    original_papers_lst[cur_original_paper_no]['ziyin'] += 1
                     break
                 else:
                     #如果full_name中含有",",如 Wang, Xinyu
@@ -376,7 +367,7 @@ def ziyin_tayin(original_paper_no,citation,cite_total=0, cur_cite=0):
                             p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
                             p.add_run(record['author'][(author_start + author_len):])
 
-                            original_authors_lst[original_paper_no]['ziyin'] += 1
+                            original_papers_lst[cur_original_paper_no]['ziyin'] += 1
                             break
         else:
             # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
@@ -397,23 +388,24 @@ def ziyin_tayin(original_paper_no,citation,cite_total=0, cur_cite=0):
                         basic_matched_num += 1
 
                         if basic_matched_num>1:
-                            original_authors_lst[original_paper_no]['ziyin'] += 1
+                            original_papers_lst[cur_original_paper_no]['ziyin'] += 1
                             break
 
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Source: ").bold = True
     p.add_run(record['source'])
 
-    yinyong_paragraph_position = original_papers_lst[original_paper_no]['yinyong_paragraph_position']
+    original_papers_lst[cur_original_paper_no]['tayin'] = cite_total - original_papers_lst[cur_original_paper_no]['ziyin']
+    yinyong_paragraph_position = original_papers_lst[cur_original_paper_no]['yinyong_paragraph_position']
 
     p = document.paragraphs[yinyong_paragraph_position]
-
+    p = p.clear()
     p.add_run("引用文献", style="sci_heading")
     p.add_run(": (自引").bold = True
-    p.add_run("    ", style="sci_heading")
+    p.add_run(" %d " % original_papers_lst[cur_original_paper_no]['ziyin'], style="sci_heading")
     p.add_run("篇  ").bold = True
     p.add_run("他引").bold = True
-    p.add_run("    ", style="sci_heading")
+    p.add_run(" %d " % original_papers_lst[cur_original_paper_no]['tayin'], style="sci_heading")
     p.add_run("篇  )").bold = True
 
 
@@ -431,6 +423,7 @@ def scrape_sci(seed_url):
 
     while orginal_papers_queue:
 
+        global cur_original_paper_no
         original_url = orginal_papers_queue.popleft()
         paper = {}
         original_url = common.normalize(seed_url,original_url)
@@ -462,6 +455,7 @@ def scrape_sci(seed_url):
                 gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
                 write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
                 cur_cite += 1
+        cur_original_paper_no += 1
         gui.progress_value.set((procced_url_num / orginal_total) * 100)
 
     write_shoulu(original_papers_lst)
