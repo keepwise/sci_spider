@@ -18,7 +18,7 @@ from tkinter import ttk
 import threading
 import tkinter.filedialog
 import tkinter.messagebox
-
+import pymysql
 
 
 
@@ -189,7 +189,7 @@ def write_shoulu(original_paper_lst):
     document.add_page_break()
     # 写入文件头
     p = document.add_paragraph("")
-    p.add_run("附件二：").bold = True
+    p.add_run("附件一：").bold = True
     p = document.add_paragraph("")
     run = p.add_run("美国《科学引文索引》（SCI-EXPANDED）收录情况")
     run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
@@ -241,7 +241,7 @@ def write_shoulu(original_paper_lst):
         p.add_run("eISSN: ", style="label")
         p.add_run(paper['eissn'])
 
-        document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+".docx")
+        document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+"_shoulu.docx")
 
 def write_word(record, record_type,cite_total=0, cur_cite=0):
     #record_type注明是原文还是引文
@@ -314,27 +314,28 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 
     original_authors = original_papers_lst[cur_original_paper_no]['author']
     original_authors_lst = original_authors.split(";")
-    original_authors_lst = [str(x).strip() for x in original_papers_lst]
+    original_authors_lst = [str(x).strip() for x in original_authors_lst]
     #生成类似下述列表 [0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"
 
     citation_authors = citation['author']
-    record = original_papers_lst[cur_original_paper_no]
+    original_paper = original_papers_lst[cur_original_paper_no]
 
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Record %d of %d" % (cur_cite, cite_total)).bold = True
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Title: ").bold = True
-    p.add_run(record['title'])
+    p.add_run(citation['title'])
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Author(s): ").bold = True
 
     for full_author in original_authors_lst:
-        if str(citation_authors).find(full_author) != -1:
+        # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"匹配
+        if len(full_author)>1 and str(citation_authors).find(full_author) != -1:
             author_len = len(full_author)
             author_start = str(citation_authors).find(full_author)
-            p.add_run(record['author'][0:author_start])
-            p.add_run(record['author'][author_start:(author_start+author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
-            p.add_run(record['author'][(author_start + author_len):])
+            p.add_run(citation['author'][0:author_start])
+            p.add_run(citation['author'][author_start:(author_start+author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
+            p.add_run(citation['author'][(author_start + author_len):])
 
             original_papers_lst[cur_original_paper_no]['ziyin'] += 1
             break
@@ -345,30 +346,32 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
             if str(full_author).find("(") != -1:
                 full_name = str(full_author).split("(")[1]
                 #full_name = (Wang, Xinyu)
-                full_name = "(" + full_name
-                if str(citation_authors).find(full_name) != -1:
-                    author_len = len(full_name)
-                    author_start = str(citation_authors).find(full_name)
-                    p.add_run(record['author'][0:author_start])
-                    p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
-                    p.add_run(record['author'][(author_start + author_len):])
+                full_name = "(" + full_name.strip()
+            else:
+                full_name = str(full_author).strip()
+            if len(full_name)>1 and str(citation_authors).find(full_name) != -1:
+                author_len = len(full_name)
+                author_start = str(citation_authors).find(full_name)
+                p.add_run(citation['author'][0:author_start])
+                p.add_run(citation['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
+                p.add_run(citation['author'][(author_start + author_len):])
 
-                    original_papers_lst[cur_original_paper_no]['ziyin'] += 1
-                    break
-                else:
-                    #如果full_name中含有",",如 Wang, Xinyu
-                    if full_name.find(",") != -1:
-                        full_name = full_name.replace(",", "")
-                        #对 Wang Xinyu进行检索
-                        if str(citation_authors).find(full_name) != -1:
-                            author_len = len(full_name)
-                            author_start = str(citation_authors).find(full_name)
-                            p.add_run(record['author'][0:author_start])
-                            p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
-                            p.add_run(record['author'][(author_start + author_len):])
+                original_papers_lst[cur_original_paper_no]['ziyin'] += 1
+                break
+            else:
+                #如果full_name中含有",",如 Wang, Xinyu
+                if full_name.find(",") != -1:
+                    full_name = full_name.replace(",", "")
+                    #对 Wang Xinyu进行检索
+                    if str(citation_authors).find(full_name) != -1:
+                        author_len = len(full_name)
+                        author_start = str(citation_authors).find(full_name)
+                        p.add_run(citation['author'][0:author_start])
+                        p.add_run(citation['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
+                        p.add_run(citation['author'][(author_start + author_len):])
 
-                            original_papers_lst[cur_original_paper_no]['ziyin'] += 1
-                            break
+                        original_papers_lst[cur_original_paper_no]['ziyin'] += 1
+                        break
         else:
             # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
             # 如果 (Wang, Xinyu) ， (Fu, Mengyin)，(Ma, Hongbin)也不匹配
@@ -381,19 +384,21 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                     if str(citation_authors).find(basic_name) != -1:
                         author_len = len(basic_name)
                         author_start = str(citation_authors).find(basic_name)
-                        p.add_run(record['author'][0:author_start])
-                        p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.GREEN
-                        p.add_run(record['author'][(author_start + author_len):])
+                        p.add_run(citation['author'][0:author_start])
+                        p.add_run(citation['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.GREEN
+                        p.add_run(citation['author'][(author_start + author_len):])
 
                         basic_matched_num += 1
 
                         if basic_matched_num>1:
                             original_papers_lst[cur_original_paper_no]['ziyin'] += 1
                             break
+            else:
+                p.add_run(citation['author'])
 
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Source: ").bold = True
-    p.add_run(record['source'])
+    p.add_run(citation['source'])
 
     original_papers_lst[cur_original_paper_no]['tayin'] = cite_total - original_papers_lst[cur_original_paper_no]['ziyin']
     yinyong_paragraph_position = original_papers_lst[cur_original_paper_no]['yinyong_paragraph_position']
@@ -459,12 +464,50 @@ def scrape_sci(seed_url):
         gui.progress_value.set((procced_url_num / orginal_total) * 100)
 
     write_shoulu(original_papers_lst)
+    if gui.jcr_opt.get() == True:
+        scrape_jcr()
     gui.processing_info.insert(0, "顺利完成")
     gui.bgn_button['state']= 'normal'
+
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
 def scrape_jcr():
-    pass
+    global document, original_papers_lst
+
+    document.add_page_break()
+    # 写入文件头
+    p = document.add_paragraph("")
+    p.add_run("附件二：").bold = True
+    p = document.add_paragraph("")
+    run = p.add_run("美国《期刊引用报告》（JCR）收录情况")
+    run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
+    run.bold = True
+
+    #期刊的不重复列表
+    issn_lst = []
+    for paper in original_papers_lst:
+        if paper['issn'] not in issn_lst:
+            issn_lst.append(paper['issn'])
+    try:
+        db = pymysql.connect(host="118.31.57.201", db="chaxinbu", user="db_kiaora", password="Kiaora477(")
+        cursor = db.cursor()
+        i = 1
+        for issn in issn_lst:
+            cursor.execute("select * from jcr where issn='%s'" % issn)
+
+            result = cursor.fetchone()
+            if result is not None:
+                title = result[1]
+                jif = result[2]
+                document.add_paragraph("%d. 刊名：%s" %(i,title))
+                document.add_paragraph("ISSN: %s" % issn)
+                document.add_paragraph("2017年影响因子: %s" % jif)
+                i += 1
+
+    except Exception as e:
+        print("JCR收录出错:%s" % str(e))
+    finally:
+        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
 class Spider_gui(object):
 
