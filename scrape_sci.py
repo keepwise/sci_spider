@@ -318,7 +318,7 @@ def write_word(original_paper_no, record_type,cite_total=0, cur_cite=0):
     #print(str(gui.directory_input.get()).strip())
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+".docx")
 
-def ziyin_tayin(original_paper_no,citation):
+def ziyin_tayin(original_paper_no,citation,cite_total=0, cur_cite=0):
     '''区分自引他引，并写入word文档'''
     global original_papers_lst
     original_authors = original_papers_lst[original_paper_no]['author']
@@ -327,19 +327,97 @@ def ziyin_tayin(original_paper_no,citation):
     #生成类似下述列表 [0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"
 
     citation_authors = citation['author']
+    record = original_papers_lst[original_paper_no]
 
-    document.add_paragraph("Record %d of %d" % (cur_cite, cite_total), style="yinwen")
+    p = document.add_paragraph("", style="yinwen")
+    p.add_run("Record %d of %d" % (cur_cite, cite_total)).bold = True
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Title: ").bold = True
     p.add_run(record['title'])
-
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Author(s): ").bold = True
-    p.add_run(record['author'])
+
+    for full_author in original_authors_lst:
+        if str(citation_authors).find(full_author) != -1:
+            author_len = len(full_author)
+            author_start = str(citation_authors).find(full_author)
+            p.add_run(record['author'][0:author_start])
+            p.add_run(record['author'][author_start:(author_start+author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
+            p.add_run(record['author'][(author_start + author_len):])
+
+            original_authors_lst[original_paper_no]['ziyin'] += 1
+            break
+    else:
+        #如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
+        # 就用 (Wang, Xinyu) ， (Fu, Mengyin)，(Ma, Hongbin)尝试匹配，如果匹配 就算自引一次
+        for full_author in original_authors_lst:
+            if str(full_author).find("(") != -1:
+                full_name = str(full_author).split("(")[1]
+                #full_name = (Wang, Xinyu)
+                full_name = "(" + full_name
+                if str(citation_authors).find(full_name) != -1:
+                    author_len = len(full_name)
+                    author_start = str(citation_authors).find(full_name)
+                    p.add_run(record['author'][0:author_start])
+                    p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
+                    p.add_run(record['author'][(author_start + author_len):])
+
+                    original_authors_lst[original_paper_no]['ziyin'] += 1
+                    break
+                else:
+                    #如果full_name中含有",",如 Wang, Xinyu
+                    if full_name.find(",") != -1:
+                        full_name = full_name.replace(",", "")
+                        #对 Wang Xinyu进行检索
+                        if str(citation_authors).find(full_name) != -1:
+                            author_len = len(full_name)
+                            author_start = str(citation_authors).find(full_name)
+                            p.add_run(record['author'][0:author_start])
+                            p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
+                            p.add_run(record['author'][(author_start + author_len):])
+
+                            original_authors_lst[original_paper_no]['ziyin'] += 1
+                            break
+        else:
+            # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
+            # 如果 (Wang, Xinyu) ， (Fu, Mengyin)，(Ma, Hongbin)也不匹配
+            #使用 Wang, XY,    Fu, MY, Ma, HB 进行匹配，两次匹配以上可以确认一次自引
+            basic_matched_num = 0
+            for full_author in original_authors_lst:
+                if str(full_author).find("(") != -1:
+                    basic_name = str(full_author).split("(")[0]
+                    basic_name = basic_name.strip()
+                    if str(citation_authors).find(basic_name) != -1:
+                        author_len = len(basic_name)
+                        author_start = str(citation_authors).find(basic_name)
+                        p.add_run(record['author'][0:author_start])
+                        p.add_run(record['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.GREEN
+                        p.add_run(record['author'][(author_start + author_len):])
+
+                        basic_matched_num += 1
+
+                        if basic_matched_num>1:
+                            original_authors_lst[original_paper_no]['ziyin'] += 1
+                            break
 
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Source: ").bold = True
     p.add_run(record['source'])
+
+    yinyong_paragraph_position = original_papers_lst[original_paper_no]['yinyong_paragraph_position']
+
+    p = document.paragraphs[yinyong_paragraph_position]
+
+    p.add_run("引用文献", style="sci_heading")
+    p.add_run(": (自引").bold = True
+    p.add_run("    ", style="sci_heading")
+    p.add_run("篇  ").bold = True
+    p.add_run("他引").bold = True
+    p.add_run("    ", style="sci_heading")
+    p.add_run("篇  )").bold = True
+
+
+
 
 def scrape_sci(seed_url):
 
