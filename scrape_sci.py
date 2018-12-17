@@ -19,6 +19,7 @@ import threading
 import tkinter.filedialog
 import tkinter.messagebox
 import pymysql
+import re
 
 
 
@@ -183,10 +184,11 @@ def get_paper_record(url):
 
 
 def write_shoulu(original_paper_lst):
+
     global document, wroten_original_num
 
 
-    document.add_page_break()
+    document.paragraphs = []
     # 写入文件头
     p = document.add_paragraph("")
     p.add_run("附件一：").bold = True
@@ -509,6 +511,53 @@ def scrape_jcr():
     finally:
         document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
+def scrape_fenqu():
+    global document, original_papers_lst
+
+    document.add_page_break()
+    # 写入文件头
+    p = document.add_paragraph("")
+    run = p.add_run("中科院SCI分区表（网络版）收录情况")
+    run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
+    run.bold = True
+
+    # 期刊的不重复列表
+    issn_lst = []
+    for paper in original_papers_lst:
+        if paper['issn'] not in issn_lst:
+            issn_lst.append(paper['issn'])
+
+    i = 0
+    for issn in issn_lst:
+
+        document.add_paragraph("%d. 刊名：")
+        document.add_paragraph("  ISSN：%s" % issn)
+        document.add_paragraph("  2017版分区情况")
+
+        table = document.add_table(rows=3, cols=4)
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = ""
+        hdr_cells[1].text = "学科名称"
+        hdr_cells[2].text = "分区"
+        hdr_cells[3].text = "TOP期刊"
+
+
+        table.rows[1].cells[0].text = "小类"
+        table.rows[2].cells[0].text = "大类"
+
+
+def author_contribution():
+    '''查询作者是否第一作者、通讯作者'''
+
+    author = gui.author_input.get()
+    name_lst = author.split(",")
+    if len(name_lst)<1:
+        tkinter.messagebox.showinfo("提示","作者格式有误")
+        return
+    else:
+        pattern = "\b"+str(name_lst[0]).strip()+"[\s,]+"+str(name_lst[1]).strip()
+
+
 class Spider_gui(object):
 
     def select_path(self):
@@ -543,6 +592,11 @@ class Spider_gui(object):
         self.fenqu_checkbutton = tkinter.Checkbutton(self.window, text="中科院分区", onvalue=True, offvalue=False,
                                                      width=15, variable=self.fenqu_opt)
 
+        self.author_label = tkinter.Label(self.window,text="作者英文名：")
+        self.author_input = tkinter.Entry(self.window,width=50)
+        self.author_tip = tkinter.Label(self.window,text="(示例: Mao, ErKe)")
+
+
         self.progress_bar = tkinter.ttk.Progressbar(self.window,orient="horizontal", length=350, mode='determinate',variable=self.progress_value, maximum=100)
         self.processing_info = tkinter.Listbox(self.window, width=50)
 
@@ -560,9 +614,14 @@ class Spider_gui(object):
         self.bianhao_input.grid(row=3, column=2, sticky="w")
         self.JCR_checkbutton.grid(row=3, column=2)
         self.fenqu_checkbutton.grid(row=3, column=2, sticky="e")
-        self.progress_bar.grid(row=4,column=2)
-        self.processing_info.grid(row=5, column=2)
-        self.bgn_button.grid(row=6, column=2, sticky="e")
+
+        self.author_label.grid(row=4, column=1)
+        self.author_input.grid(row=4,column=2, stick="w")
+        self.author_tip.grid(row=4,column=3,stick="w")
+
+        self.progress_bar.grid(row=5,column=2)
+        self.processing_info.grid(row=6, column=2)
+        self.bgn_button.grid(row=7, column=2, sticky="e")
 
     def begin_crawl(self):
         gui.bgn_button['state'] = 'disabled'
