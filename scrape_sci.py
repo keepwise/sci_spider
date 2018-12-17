@@ -444,7 +444,7 @@ def scrape_sci(seed_url):
         print("progress_value: %d" % gui.progress_value.get())
         original_papers_lst.append(paper)
 
-        if len(paper['citing_url'])>1:
+        if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
             write_word(paper, record_type='original')
             citing_url = common.normalize(seed_url, paper['citing_url'])
 
@@ -465,9 +465,12 @@ def scrape_sci(seed_url):
         cur_original_paper_no += 1
         gui.progress_value.set((procced_url_num / orginal_total) * 100)
 
+    author_contribution()
     write_shoulu(original_papers_lst)
     if gui.jcr_opt.get() == True:
         scrape_jcr()
+    if gui.fenqu_opt.get() == True:
+        scrape_fenqu()
     gui.processing_info.insert(0, "顺利完成")
     gui.bgn_button['state']= 'normal'
 
@@ -545,18 +548,68 @@ def scrape_fenqu():
         table.rows[1].cells[0].text = "小类"
         table.rows[2].cells[0].text = "大类"
 
-
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 def author_contribution():
     '''查询作者是否第一作者、通讯作者'''
 
+    global document, original_papers_lst
     author = gui.author_input.get()
     name_lst = author.split(",")
     if len(name_lst)<1:
         tkinter.messagebox.showinfo("提示","作者格式有误")
         return
     else:
-        pattern = "\b"+str(name_lst[0]).strip()+"[\s,]+"+str(name_lst[1]).strip()
+        p = document.add_paragraph("")
+        run = p.add_run("作者论文情况概览")
+        run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
+        run.bold = True
 
+        table = document.add_table(rows=len(original_papers_lst)+1, cols=5)
+
+        #表格包括1.序号，2.文章题目 3.收录情况 4,引用情况  5.贡献情况
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = "序号"
+        hdr_cells[1].text = "标题"
+        hdr_cells[2].text = "收录情况"
+        hdr_cells[3].text = "引用情况"
+        hdr_cells[4].text = "贡献情况"
+
+        capital_pattern = re.compile("[A-Z]")
+
+        capital_lst = capital_pattern.findall(str(name_lst[1]))
+        capital_name = ""
+        for capital in capital_lst:
+            capital_name += capital+"[\.-]?"
+        #生成正则"Mao[\s,]+E[\.-]?K[\.-]?"
+        pattern_str = str(name_lst[0]).strip() + "[\s,]+" + capital_name
+        paper_num = 1
+        for paper in original_papers_lst:
+            #匹配是否第一作者
+            matchObj = re.match(pattern_str,paper['author'], re.M)
+            if matchObj:
+                paper['bool_first_author'] = True
+            else:
+                paper['bool_first_author'] = False
+
+            #匹配是否通讯作者
+            matchObj = re.search(pattern_str,re.M)
+            if matchObj:
+                paper['bool_reprint_author'] = True
+            else:
+                paper['bool_reprint_author'] = False
+
+            paper_cells = table.rows[paper_num].cells
+            paper_cells[0].text = paper_num
+            paper_cells[1].text = paper['title']
+            paper_cells[2].text = "SCIE收录"
+            paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
+            paper_cells[4].text = ""
+            if paper['bool_first_author']:
+                paper_cells[4].text += "第一作者  "
+            if paper['bool_reprint_author']:
+                paper_cells[4].text +="通讯作者"
+
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
 class Spider_gui(object):
 
@@ -570,9 +623,11 @@ class Spider_gui(object):
         self.path = tkinter.StringVar()
         self.jcr_opt = tkinter.BooleanVar()
         self.fenqu_opt = tkinter.BooleanVar()
+        self.yinyong_opt = tkinter.BooleanVar()
         self.progress_value = tkinter.IntVar()
 
         self.jcr_opt.set(False)
+        self.yinyong_opt.set(False)
         self.fenqu_opt.set(False)
 
         self.window.title("检索报告采集")
@@ -591,6 +646,7 @@ class Spider_gui(object):
                                                    variable=self.jcr_opt)
         self.fenqu_checkbutton = tkinter.Checkbutton(self.window, text="中科院分区", onvalue=True, offvalue=False,
                                                      width=15, variable=self.fenqu_opt)
+        self.yinyong_checkbutton = tkinter.Checkbutton(self.window,text="引用", onvalue=True, offvalue=False, width=15,variable=self.yinyong_opt)
 
         self.author_label = tkinter.Label(self.window,text="作者英文名：")
         self.author_input = tkinter.Entry(self.window,width=50)
@@ -612,8 +668,9 @@ class Spider_gui(object):
 
         self.bianhao_label.grid(row=3, column=1)
         self.bianhao_input.grid(row=3, column=2, sticky="w")
-        self.JCR_checkbutton.grid(row=3, column=2)
-        self.fenqu_checkbutton.grid(row=3, column=2, sticky="e")
+        self.JCR_checkbutton.grid(row=3, column=2 )
+        self.fenqu_checkbutton.grid(row=3, column=2, sticky='e')
+        self.yinyong_checkbutton.grid(row=3, column=3, sticky='e')
 
         self.author_label.grid(row=4, column=1)
         self.author_input.grid(row=4,column=2, stick="w")
