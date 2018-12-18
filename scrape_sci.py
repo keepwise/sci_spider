@@ -187,8 +187,6 @@ def write_shoulu(original_paper_lst):
 
     global document, wroten_original_num
 
-
-    document.paragraphs = []
     # 写入文件头
     p = document.add_paragraph("")
     p.add_run("附件一：").bold = True
@@ -530,14 +528,15 @@ def scrape_fenqu():
         if paper['issn'] not in issn_lst:
             issn_lst.append(paper['issn'])
 
-    i = 0
+    i = 1
     for issn in issn_lst:
 
-        document.add_paragraph("%d. 刊名：")
+        document.add_paragraph("%d. 刊名：" % i)
         document.add_paragraph("  ISSN：%s" % issn)
         document.add_paragraph("  2017版分区情况")
 
         table = document.add_table(rows=3, cols=4)
+        table.style = "Table Grid"
         hdr_cells = table.rows[0].cells
         hdr_cells[0].text = ""
         hdr_cells[1].text = "学科名称"
@@ -548,11 +547,16 @@ def scrape_fenqu():
         table.rows[1].cells[0].text = "小类"
         table.rows[2].cells[0].text = "大类"
 
+        i += 1
+
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 def author_contribution():
     '''查询作者是否第一作者、通讯作者'''
 
     global document, original_papers_lst
+
+    if len(document.paragraphs)>1:
+        del document.paragraphs[:]
     author = gui.author_input.get()
     name_lst = author.split(",")
     if len(name_lst)<1:
@@ -565,6 +569,7 @@ def author_contribution():
         run.bold = True
 
         table = document.add_table(rows=len(original_papers_lst)+1, cols=5)
+        table.style = "Table Grid"
 
         #表格包括1.序号，2.文章题目 3.收录情况 4,引用情况  5.贡献情况
         hdr_cells = table.rows[0].cells
@@ -592,14 +597,14 @@ def author_contribution():
                 paper['bool_first_author'] = False
 
             #匹配是否通讯作者
-            matchObj = re.search(pattern_str,re.M)
+            matchObj = re.search(pattern_str,paper['reprint_author'],re.M)
             if matchObj:
                 paper['bool_reprint_author'] = True
             else:
                 paper['bool_reprint_author'] = False
 
             paper_cells = table.rows[paper_num].cells
-            paper_cells[0].text = paper_num
+            paper_cells[0].text = str(paper_num)
             paper_cells[1].text = paper['title']
             paper_cells[2].text = "SCIE收录"
             paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
@@ -608,6 +613,7 @@ def author_contribution():
                 paper_cells[4].text += "第一作者  "
             if paper['bool_reprint_author']:
                 paper_cells[4].text +="通讯作者"
+            paper_num += 1
 
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
