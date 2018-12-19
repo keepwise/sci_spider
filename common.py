@@ -95,7 +95,7 @@ def download(url, headers, proxy, num_retries, data=None):
 
     download_url_total += 1
     print('Downloading: %d  %s' % (download_url_total, url))
-    request = urllib.request.Request(url, data, headers)
+    request = urllib.request.Request(url=url, headers=headers)
     opener = urllib.request.build_opener()
     if proxy:
         proxy_params = {urllib.parse.urlparse(url).scheme: proxy}

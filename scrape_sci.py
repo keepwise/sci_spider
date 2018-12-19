@@ -81,6 +81,7 @@ def get_paper_record(url):
 
     paper = {}
     html = common.download(url=url, proxy=None, num_retries=num_retries,headers=headers)
+    html = str(html,encoding="utf-8")
     html_emt = etree.HTML(html)
     try:
 
@@ -121,7 +122,7 @@ def get_paper_record(url):
         else:
             citing_url = ""
 
-        reprint_author_lst = html_emt.xpath("//div[@class='block-record-info']//span[contains(text(),'Reprint Address')]/following-sibling::text()")
+        reprint_author_lst = html_emt.xpath("//div[@class='block-record-info']//span[contains(text(),'Reprint Address')]/following-sibling::text()| //div[@class='block-record-info']//span[contains(text(),'通讯作者地址')]/following-sibling::text()")
         reprint_author_lst = filter(lambda x: "\n" not in str(x), reprint_author_lst)
 
         print(reprint_author_lst)
@@ -463,19 +464,27 @@ def scrape_sci(seed_url):
         cur_original_paper_no += 1
         gui.progress_value.set((procced_url_num / orginal_total) * 100)
 
-    author_contribution()
+    del document
+    shoulu_document = Document()
+    shoulu_document.styles["Normal"].font.name = "Times New Roman"
+    shoulu_document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+    shoulu_document.styles["Normal"].paragraph_format.space_after = docx.shared.Pt(1)
+
+    shoulu_document.styles["Default Paragraph Font"].font.name = "Times New Roman"
+    shoulu_document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+    author_contribution(shoulu_document)
     write_shoulu(original_papers_lst)
     if gui.jcr_opt.get() == True:
-        scrape_jcr()
+        scrape_jcr(shoulu_document)
     if gui.fenqu_opt.get() == True:
-        scrape_fenqu()
+        scrape_fenqu(shoulu_document)
     gui.processing_info.insert(0, "顺利完成")
     gui.bgn_button['state']= 'normal'
 
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
-def scrape_jcr():
-    global document, original_papers_lst
+def scrape_jcr(document):
+    global original_papers_lst
 
     document.add_page_break()
     # 写入文件头
@@ -512,8 +521,8 @@ def scrape_jcr():
     finally:
         document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
-def scrape_fenqu():
-    global document, original_papers_lst
+def scrape_fenqu(document):
+    global original_papers_lst
 
     document.add_page_break()
     # 写入文件头
@@ -550,10 +559,10 @@ def scrape_fenqu():
         i += 1
 
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
-def author_contribution():
+def author_contribution(document):
     '''查询作者是否第一作者、通讯作者'''
 
-    global document, original_papers_lst
+    global original_papers_lst
 
     if len(document.paragraphs)>1:
         del document.paragraphs[:]
@@ -570,6 +579,7 @@ def author_contribution():
 
         table = document.add_table(rows=len(original_papers_lst)+1, cols=5)
         table.style = "Table Grid"
+        table.autofit = True
 
         #表格包括1.序号，2.文章题目 3.收录情况 4,引用情况  5.贡献情况
         hdr_cells = table.rows[0].cells
