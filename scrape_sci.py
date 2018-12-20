@@ -81,7 +81,11 @@ def get_paper_record(url):
 
     paper = {}
     html = common.download(url=url, proxy=None, num_retries=num_retries,headers=headers)
-    html = str(html,encoding="utf-8")
+    html = html.encode(encoding='utf-8')
+    html = html.decode("utf-8")
+
+    file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
+    file.write(html)
     html_emt = etree.HTML(html)
     try:
 
@@ -464,7 +468,7 @@ def scrape_sci(seed_url):
         cur_original_paper_no += 1
         gui.progress_value.set((procced_url_num / orginal_total) * 100)
 
-    del document
+
     shoulu_document = Document()
     shoulu_document.styles["Normal"].font.name = "Times New Roman"
     shoulu_document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
@@ -646,7 +650,7 @@ class Spider_gui(object):
         self.yinyong_opt.set(False)
         self.fenqu_opt.set(False)
 
-        self.window.title("检索报告采集")
+        self.window.title("检索报告 by 北理工图书馆 不懂如山")
 
         self.url_label = tkinter.Label(self.window, text="URL:")
         self.url_input = tkinter.Entry(self.window, width=50)
