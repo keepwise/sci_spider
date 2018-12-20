@@ -19,7 +19,7 @@ import threading
 import tkinter.filedialog
 import tkinter.messagebox
 import pymysql
-import re
+import pandas as pd
 
 
 
@@ -478,14 +478,22 @@ def scrape_sci(seed_url):
     shoulu_document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
     author_contribution(shoulu_document)
     write_shoulu(original_papers_lst)
+    ei_file = gui.ei_file_path.get()
+    if(len(ei_file.strip())>1):
+        write_ei_shoulu(shoulu_document)
+
     if gui.jcr_opt.get() == True:
         scrape_jcr(shoulu_document)
     if gui.fenqu_opt.get() == True:
         scrape_fenqu(shoulu_document)
     gui.processing_info.insert(0, "顺利完成")
     gui.bgn_button['state']= 'normal'
-
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
+
+def write_ei_shoulu(document):
+    ei_file = gui.ei_file_path.get()
+    ei_file = ei_file.strip()
+    ei_papers = pd.read_excel(ei_file,0)
 
 def scrape_jcr(document):
     global original_papers_lst
@@ -561,11 +569,10 @@ def scrape_fenqu(document):
         table.rows[2].cells[0].text = "大类"
 
         i += 1
-
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
+
 def author_contribution(document):
     '''查询作者是否第一作者、通讯作者'''
-
     global original_papers_lst
 
     if len(document.paragraphs)>1:
@@ -637,6 +644,10 @@ class Spider_gui(object):
         rpt_dir = tkinter.filedialog.askdirectory()
         self.path.set(rpt_dir)
 
+    def select_ei_path(self):
+        ei_file = tkinter.filedialog.askopenfilename()
+        self.path.set(ei_file)
+
     def __init__(self):
         self.window = tkinter.Tk()
 
@@ -645,12 +656,14 @@ class Spider_gui(object):
         self.fenqu_opt = tkinter.BooleanVar()
         self.yinyong_opt = tkinter.BooleanVar()
         self.progress_value = tkinter.IntVar()
+        self.ei_file_path = tkinter.StringVar()
 
         self.jcr_opt.set(False)
         self.yinyong_opt.set(False)
         self.fenqu_opt.set(False)
 
         self.window.title("检索报告 by 北理工图书馆 不懂如山")
+        self.window.iconbitmap("working.ico")
 
         self.url_label = tkinter.Label(self.window, text="URL:")
         self.url_input = tkinter.Entry(self.window, width=50)
@@ -658,6 +671,10 @@ class Spider_gui(object):
         self.path_label = tkinter.Label(self.window, text="保存路径：")
         self.path_input = tkinter.Entry(self.window, width=50, textvariable=self.path)
         self.path_button = tkinter.Button(self.window, text="路径选择", command=self.select_path)
+
+        self.ei_label = tkinter.Label(self.window, text="EI文件：")
+        self.ei_path_input = tkinter.Entry(self.window, width=50, textvariable=self.ei_file_path)
+        self.ei_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_ei_path)
 
         self.bianhao_label = tkinter.Label(self.window, text="编号")
         self.bianhao_input = tkinter.Entry(self.window, width=10)
@@ -686,19 +703,23 @@ class Spider_gui(object):
         self.path_input.grid(row=2, column=2)
         self.path_button.grid(row=2, column=3)
 
-        self.bianhao_label.grid(row=3, column=1)
-        self.bianhao_input.grid(row=3, column=2, sticky="w")
-        self.JCR_checkbutton.grid(row=3, column=2 )
-        self.fenqu_checkbutton.grid(row=3, column=2, sticky='e')
-        self.yinyong_checkbutton.grid(row=3, column=3, sticky='e')
+        self.ei_path_label.grid(row=3, column=1)
+        self.ei_path_input.grid(row=3, column=2)
+        self.ei_path_button.grid(row=3, column=3)
 
-        self.author_label.grid(row=4, column=1)
-        self.author_input.grid(row=4,column=2, stick="w")
-        self.author_tip.grid(row=4,column=3,stick="w")
+        self.bianhao_label.grid(row=4, column=1)
+        self.bianhao_input.grid(row=4, column=2, sticky="w")
+        self.JCR_checkbutton.grid(row=4, column=2 )
+        self.fenqu_checkbutton.grid(row=4, column=2, sticky='e')
+        self.yinyong_checkbutton.grid(row=4, column=3, sticky='e')
 
-        self.progress_bar.grid(row=5,column=2)
-        self.processing_info.grid(row=6, column=2)
-        self.bgn_button.grid(row=7, column=2, sticky="e")
+        self.author_label.grid(row=5, column=1)
+        self.author_input.grid(row=5,column=2, stick="w")
+        self.author_tip.grid(row=5,column=3,stick="w")
+
+        self.progress_bar.grid(row=6,column=2)
+        self.processing_info.grid(row=7, column=2)
+        self.bgn_button.grid(row=8, column=2, sticky="e")
 
     def begin_crawl(self):
         gui.bgn_button['state'] = 'disabled'
