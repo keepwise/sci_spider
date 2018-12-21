@@ -491,9 +491,19 @@ def scrape_sci(seed_url):
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
 def write_ei_shoulu(document):
+
+    global original_papers_lst
     ei_file = gui.ei_file_path.get()
     ei_file = ei_file.strip()
     ei_papers = pd.read_excel(ei_file,0)
+    i = 0
+    while i<ei_papers.shape[0]:
+        title = ei_papers['Title'][i]
+        for paper in original_papers_lst:
+            if title == paper['title']:
+                paper['title'] += "\n Accession number:" + ei_papers['Accession number']
+
+        i += 1
 
 def scrape_jcr(document):
     global original_papers_lst
