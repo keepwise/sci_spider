@@ -76,7 +76,7 @@ def get_papers_queue(seed_url):
 
     return url_queue
 
-def get_paper_record(url):
+def get_paper_record(url,database):
     global url_crawled_num, num_retries, delay, proxy, headers
 
     paper = {}
@@ -178,6 +178,7 @@ def get_paper_record(url):
         paper['ziyin'] = 0
         #他引次数
         paper['tayin'] = 0
+        paper['shoulu'] = database
     except Exception as e:
 
             print("获取文章详细信息失败,url: %s " % url)
@@ -196,7 +197,8 @@ def write_shoulu(original_paper_lst):
     p = document.add_paragraph("")
     p.add_run("附件一：").bold = True
     p = document.add_paragraph("")
-    run = p.add_run("美国《科学引文索引》（SCI-EXPANDED）收录情况")
+    #run = p.add_run("美国《科学引文索引》（SCI-EXPANDED）收录情况")
+    run = p.add_run("收录详细情况")
     run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
     run.bold = True
 
@@ -230,9 +232,15 @@ def write_shoulu(original_paper_lst):
         p.add_run("Web of Science Core Collection引用次数: ", style="label")
         p.add_run(paper['wos_cited_num'])
 
-        p = document.add_paragraph("", style="indent")
-        p.add_run("入藏号: ", style="label")
-        p.add_run(paper['wos_no'])
+        if paper.get('wos_no','not') != 'not':
+            p = document.add_paragraph("", style="indent")
+            p.add_run("入藏号: ", style="label")
+            p.add_run(paper['wos_no'])
+
+        if paper.get('accession number','not') !='not':
+            p = document.add_paragraph("", style="indent")
+            p.add_run("Accession number: ", style="label")
+            p.add_run(paper['accession number'])
 
         p = document.add_paragraph("", style="indent")
         p.add_run("通讯作者: ", style="label")
@@ -245,6 +253,10 @@ def write_shoulu(original_paper_lst):
         p = document.add_paragraph("", style="indent")
         p.add_run("eISSN: ", style="label")
         p.add_run(paper['eissn'])
+
+        p = document.add_paragraph("", style="indent")
+        p.add_run("收录情况: ", style="label")
+        p.add_run(paper['shoulu'])
 
         document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+"_shoulu.docx")
 
@@ -438,7 +450,7 @@ def scrape_sci(seed_url):
         paper = {}
         original_url = common.normalize(seed_url,original_url)
         throttle.wait(original_url)
-        paper = get_paper_record(original_url)
+        paper = get_paper_record(original_url,"SCIE")
         procced_url_num += 1
         processed_origin_num += 1
         gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
@@ -460,7 +472,7 @@ def scrape_sci(seed_url):
 
                 throttle.wait(citation_url)
                 citation = {}
-                citation = get_paper_record(citation_url)
+                citation = get_paper_record(citation_url, "SCIE")
                 procced_url_num += 1
                 gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
                 write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
@@ -490,7 +502,7 @@ def scrape_sci(seed_url):
     gui.bgn_button['state']= 'normal'
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
-def write_ei_shoulu(document):
+def ei_shoulu(document):
 
     global original_papers_lst
     ei_file = gui.ei_file_path.get()
@@ -499,9 +511,22 @@ def write_ei_shoulu(document):
     i = 0
     while i<ei_papers.shape[0]:
         title = ei_papers['Title'][i]
-        for paper in original_papers_lst:
-            if title == paper['title']:
-                paper['title'] += "\n Accession number:" + ei_papers['Accession number']
+        ei_paper = {}
+        j = 0
+        while j<len(original_papers_lst):
+            if title == original_papers_lst[j]['title']:
+                original_papers_lst[j]['accession number'] =  ei_papers['Accession number'][i]
+                original_papers_lst[j]['shoulu'] += ", EI"
+                break
+            j += 1
+        else:
+            ei_paper['title'] = title
+            ei_paper['author'] = ei_papers['Author'][i]
+            ei_paper['source'] = ei_papers['Source'][i]+" 卷:"+ei_papers['Volume'][i]+"     页:"+ei_papers['Pages'][i] +" 出版年:"+ei_papers['Publication year'][i]+" 文献类型:"+ei_papers['Document type'][i]
+            ei_paper['issn'] = ei_papers['ISSN']
+            ei_paper['accession number'] = ei_papers['Accession number'][i]
+            ei_paper['shoulu'] = "EI"
+            original_papers_lst.append(ei_paper)
 
         i += 1
 
@@ -637,7 +662,12 @@ def author_contribution(document):
             paper_cells = table.rows[paper_num].cells
             paper_cells[0].text = str(paper_num)
             paper_cells[1].text = paper['title']
-            paper_cells[2].text = "SCIE收录"
+            if paper.get("wos",'not') != 'not':
+                paper_cells[1].text += "\n WOS:" + paper['wos']
+            if paper.get('accession number','not') != 'not':
+                paper_cells[1].text += "\n Accession Number:" + paper['accession number']
+
+            paper_cells[2].text = paper['shoulu']
             paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
             paper_cells[4].text = ""
             if paper['bool_first_author']:
