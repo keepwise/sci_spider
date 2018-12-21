@@ -494,7 +494,7 @@ def scrape_sci(seed_url):
     if(len(ei_file.strip())>1):
         ei_shoulu()
 
-
+    write_report(shoulu_document)
     author_contribution(shoulu_document)
     write_shoulu(shoulu_document)
 
@@ -507,8 +507,45 @@ def scrape_sci(seed_url):
     gui.bgn_button['state']= 'normal'
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
-def ei_shoulu():
+def write_report(document):
 
+    global original_papers_lst
+    ei_paper_num = 0
+    sci_paper_num = 0
+    ei_sci_paper_num = 0
+    ziyin_num = 0
+    tayin_num = 0
+
+    for paper in original_papers_lst:
+        if paper['shoulu'] == 'EI':
+            ei_paper_num += 1
+        if paper['shoulu'] == 'SCIE':
+            sci_paper_num += 1
+        if paper['shoulu'] =='SCIE, EI':
+            ei_sci_paper_num += 1
+
+        if paper.get('ziyin','000') !='000':
+            ziyin_num += int(paper['ziyin'])
+        if paper.get('tayin','000') != '000':
+            tayin_num += int(paper['tayin'])
+
+    style = document.styles.add_style("indent", WD_STYLE_TYPE.PARAGRAPH)
+    style.paragraph_format.left_indent = docx.shared.Cm(0.5)
+    style.paragraph_format.space_after = docx.shared.Pt(1)
+    style.font.name = "Times New Roman"
+    style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+    style.font.size = docx.shared.Pt(12)
+
+    p = document.add_paragraph("")
+    run = p.add_run("委托检索信息")
+    run.bold = True
+    run.font.size = docx.shared.Pt(14)
+
+
+
+
+def ei_shoulu():
+    '''将EI收录的论文添加到original_paper_lst'''
     global original_papers_lst
     ei_file = gui.ei_file_path.get()
     ei_file = ei_file.strip()
