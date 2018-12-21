@@ -189,9 +189,9 @@ def get_paper_record(url,database):
     return paper
 
 
-def write_shoulu(original_paper_lst):
+def write_shoulu(document):
 
-    global document, wroten_original_num
+    global  wroten_original_num,original_papers_lst
 
     # 写入文件头
     p = document.add_paragraph("")
@@ -214,7 +214,7 @@ def write_shoulu(original_paper_lst):
     style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
     i = 0
-    for paper in original_paper_lst:
+    for paper in original_papers_lst:
         i += 1
         p = document.add_paragraph("")
         p.add_run(str(i)+". Title: ",style="label")
@@ -228,9 +228,10 @@ def write_shoulu(original_paper_lst):
         p.add_run("Source: ", style="label")
         p.add_run(paper['source'])
 
-        p = document.add_paragraph("", style="indent")
-        p.add_run("Web of Science Core Collection引用次数: ", style="label")
-        p.add_run(paper['wos_cited_num'])
+        if paper.get("wos_cited_num",'not') != 'not':
+            p = document.add_paragraph("", style="indent")
+            p.add_run("Web of Science Core Collection引用次数: ", style="label")
+            p.add_run(paper['wos_cited_num'])
 
         if paper.get('wos_no','not') != 'not':
             p = document.add_paragraph("", style="indent")
@@ -240,19 +241,20 @@ def write_shoulu(original_paper_lst):
         if paper.get('accession number','not') !='not':
             p = document.add_paragraph("", style="indent")
             p.add_run("Accession number: ", style="label")
-            p.add_run(paper['accession number'])
+            p.add_run(str(paper['accession number']))
 
         p = document.add_paragraph("", style="indent")
         p.add_run("通讯作者: ", style="label")
-        p.add_run(paper['reprint_author'])
+        p.add_run(str(paper['reprint_author']).replace("nan",""))
 
         p = document.add_paragraph("", style="indent")
         p.add_run("ISSN: ", style="label")
-        p.add_run(paper['issn'])
+        p.add_run(str(paper['issn']).replace("nan",""))
 
-        p = document.add_paragraph("", style="indent")
-        p.add_run("eISSN: ", style="label")
-        p.add_run(paper['eissn'])
+        if paper.get("eissn",'not') != 'not':
+            p = document.add_paragraph("", style="indent")
+            p.add_run("eISSN: ", style="label")
+            p.add_run(paper['eissn'])
 
         p = document.add_paragraph("", style="indent")
         p.add_run("收录情况: ", style="label")
@@ -431,8 +433,6 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run("篇  )").bold = True
 
 
-
-
 def scrape_sci(seed_url):
 
     global original_papers_lst
@@ -452,7 +452,6 @@ def scrape_sci(seed_url):
         throttle.wait(original_url)
         paper = get_paper_record(original_url,"SCIE")
         procced_url_num += 1
-        processed_origin_num += 1
         gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
 
         #gui.progress_bar.update()
@@ -478,7 +477,8 @@ def scrape_sci(seed_url):
                 write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
                 cur_cite += 1
         cur_original_paper_no += 1
-        gui.progress_value.set((procced_url_num / orginal_total) * 100)
+        processed_origin_num += 1
+        gui.progress_value.set((processed_origin_num / orginal_total) * 100)
 
 
     shoulu_document = Document()
@@ -488,11 +488,16 @@ def scrape_sci(seed_url):
 
     shoulu_document.styles["Default Paragraph Font"].font.name = "Times New Roman"
     shoulu_document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-    author_contribution(shoulu_document)
-    write_shoulu(original_papers_lst)
+
+
     ei_file = gui.ei_file_path.get()
     if(len(ei_file.strip())>1):
-        write_ei_shoulu(shoulu_document)
+        ei_shoulu()
+
+
+    author_contribution(shoulu_document)
+    write_shoulu(shoulu_document)
+
 
     if gui.jcr_opt.get() == True:
         scrape_jcr(shoulu_document)
@@ -502,7 +507,7 @@ def scrape_sci(seed_url):
     gui.bgn_button['state']= 'normal'
     tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
 
-def ei_shoulu(document):
+def ei_shoulu():
 
     global original_papers_lst
     ei_file = gui.ei_file_path.get()
@@ -522,10 +527,12 @@ def ei_shoulu(document):
         else:
             ei_paper['title'] = title
             ei_paper['author'] = ei_papers['Author'][i]
-            ei_paper['source'] = ei_papers['Source'][i]+" 卷:"+ei_papers['Volume'][i]+"     页:"+ei_papers['Pages'][i] +" 出版年:"+ei_papers['Publication year'][i]+" 文献类型:"+ei_papers['Document type'][i]
-            ei_paper['issn'] = ei_papers['ISSN']
+            ei_paper['source'] = ei_papers['Source'][i]+" 卷:"+str(ei_papers['Volume'][i])+"     页:"+str(ei_papers['Pages'][i]) +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
+            ei_paper['issn'] = ei_papers['ISSN'][i]
             ei_paper['accession number'] = ei_papers['Accession number'][i]
             ei_paper['shoulu'] = "EI"
+            ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
+            ei_paper['address'] = ei_papers['Author affiliation'][i]
             original_papers_lst.append(ei_paper)
 
         i += 1
@@ -650,25 +657,47 @@ def author_contribution(document):
             if matchObj:
                 paper['bool_first_author'] = True
             else:
-                paper['bool_first_author'] = False
+                #这一部分主要是针对EI文献的作者形式来测试，EI中都是作者全称
+                #生成 Mao[\s,]+ErKe|ErKe[\s,]+Mao
+                ptn_str = name_lst[0].strip()+"[\s,]+"+name_lst[1].strip() + "|" + name_lst[1].strip() + "[\s,]+" + name_lst[0].strip()
+                #将作者中 Mao, Er-Ke调整为 Mao, ErKe进行测试
+                author = paper['author'].replace("-","")
+                matchObj = re.match(ptn_str,author,re.I | re.M)
+                if matchObj:
+                    paper['bool_first_author'] = True
+                else:
+                    paper['bool_first_author'] = False
 
             #匹配是否通讯作者
-            matchObj = re.search(pattern_str,paper['reprint_author'],re.M)
-            if matchObj:
-                paper['bool_reprint_author'] = True
-            else:
-                paper['bool_reprint_author'] = False
+            reprint_author = str(paper['reprint_author'])
+            if len(reprint_author)>1:
+                matchObj = re.search(pattern_str,reprint_author,re.M)
+                if matchObj:
+                    paper['bool_reprint_author'] = True
+                else:
+                    # 这一部分主要是针对EI文献的作者形式来测试，EI中都是作者全称
+                    # 生成 Mao[\s,]+ErKe|ErKe[\s,]+Mao
+                    ptn_str = name_lst[0].strip() + "[\s,]+" + name_lst[1].strip() + "|" + name_lst[1].strip() + "[\s,]+" + \
+                              name_lst[0].strip()
+                    # 将作者中 Mao, Er-Ke调整为 Mao, ErKe进行测试
+                    author = reprint_author.replace("-", "")
+                    matchObj = re.search(ptn_str, author, re.I | re.M)
+                    if matchObj:
+                        paper['bool_reprint_author'] = True
+                    else:
+                        paper['bool_reprint_author'] = False
 
             paper_cells = table.rows[paper_num].cells
             paper_cells[0].text = str(paper_num)
             paper_cells[1].text = paper['title']
-            if paper.get("wos",'not') != 'not':
-                paper_cells[1].text += "\n WOS:" + paper['wos']
+            if paper.get("wos_no",'not') != 'not':
+                paper_cells[1].text += "\n WOS:" + paper['wos_no']
             if paper.get('accession number','not') != 'not':
-                paper_cells[1].text += "\n Accession Number:" + paper['accession number']
+                paper_cells[1].text += "\n Accession Number:" + str(paper['accession number'])
 
             paper_cells[2].text = paper['shoulu']
-            paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
+            if paper.get('ziyin','000') != '000':
+                paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
             paper_cells[4].text = ""
             if paper['bool_first_author']:
                 paper_cells[4].text += "第一作者  "
@@ -686,7 +715,7 @@ class Spider_gui(object):
 
     def select_ei_path(self):
         ei_file = tkinter.filedialog.askopenfilename()
-        self.path.set(ei_file)
+        self.ei_file_path.set(ei_file)
 
     def __init__(self):
         self.window = tkinter.Tk()
@@ -712,7 +741,7 @@ class Spider_gui(object):
         self.path_input = tkinter.Entry(self.window, width=50, textvariable=self.path)
         self.path_button = tkinter.Button(self.window, text="路径选择", command=self.select_path)
 
-        self.ei_label = tkinter.Label(self.window, text="EI文件：")
+        self.ei_path_label = tkinter.Label(self.window, text="EI文件：")
         self.ei_path_input = tkinter.Entry(self.window, width=50, textvariable=self.ei_file_path)
         self.ei_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_ei_path)
 
@@ -725,7 +754,7 @@ class Spider_gui(object):
                                                      width=15, variable=self.fenqu_opt)
         self.yinyong_checkbutton = tkinter.Checkbutton(self.window,text="引用", onvalue=True, offvalue=False, width=15,variable=self.yinyong_opt)
 
-        self.author_label = tkinter.Label(self.window,text="作者英文名：")
+        self.author_label = tkinter.Label(self.window,text="委托人英文名：")
         self.author_input = tkinter.Entry(self.window,width=50)
         self.author_tip = tkinter.Label(self.window,text="(示例: Mao, ErKe)")
 
