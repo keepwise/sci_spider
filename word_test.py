@@ -3,7 +3,8 @@ import docx
 from docx.enum.text import WD_COLOR_INDEX
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
-
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import time
 
 document = Document()
 
@@ -46,28 +47,45 @@ heading_style = document.styles.add_style("sci_heading", WD_STYLE_TYPE.CHARACTER
 heading_style.font.bold = True
 heading_style.font.underline = True
 heading_style.font.name = "Times New Roman"
+heading_style.font.size =  docx.shared.Pt(14)
 heading_style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-for i in range(1,5):
-    p = document.add_paragraph("")
-    p.add_run(str(i)+". ")
-    p.add_run("被引文献",style="sci_heading")
-    p.add_run(":")
+
+style = document.styles.add_style("indent", WD_STYLE_TYPE.PARAGRAPH)
+style.paragraph_format.left_indent = docx.shared.Cm(0.5)
+style.paragraph_format.space_after = docx.shared.Pt(1)
+style.font.name = "Times New Roman"
+style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+style.font.size = docx.shared.Pt(12)
 
 
+p = document.add_paragraph()
+p.add_run("检索结果", style="sci_heading")
 
-    p = document.add_paragraph("",style="yinwen")
-    p.add_run("引用文献",style="sci_heading")
-    p.add_run("  自引").bold = True
-    p.add_run("    ",style="sci_heading")
-    p.add_run("篇  ").bold = True
+p = document.add_paragraph("    本次检索根据委托人")
+p.add_run("  ").underline = True
+p.add_run("所提供的论文目录及其检索要求，通过对上面的数据库进行检索，检索结果如下：")
 
-    p.add_run("他引").bold = True
-    p.add_run("    ", style="sci_heading")
-    p.add_run("篇  ").bold = True
+document.add_paragraph("1.	美国《科学引文索引》(SCI-EXPANDED，网络版)收录   篇，在《Web of Science 核心合集：引文索引》中累计被引用  次（其中他人引用  次，自引  次。注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。",style="indent")
 
-    p = document.add_paragraph("Title: Observer-based sliding mode control for a class of discrete systems via delta operator approach",style="yinwen")
-    print(p.style.name)
+document.add_paragraph("")
+document.add_paragraph("（检索结果详见附件）")
+document.add_paragraph("特此证明！")
 
-document.save(r"c:\users\wangxiaoshan\desktop\wxs_py\header_test.docx")
+document.add_paragraph("")
+p = document.add_paragraph("        检索人：")
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+p = document.add_paragraph("查证单位：教育部科技查新工作站（L27）")
+p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+p = document.add_paragraph("北京理工大学查新检索咨询中心")
+p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+
+p = document.add_paragraph(time.strftime("%Y{y}%m{m}%d{d}").format(y='年',m='月',d='日'))
+p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+
+document.save(r"c:\users\wangxiaoshan\desktop\wxs_py\rpt_test.docx")
 
 print("success")

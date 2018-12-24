@@ -41,6 +41,7 @@ proxy = None
 wroten_original_num = 0  #已经写入的被引文献数量
 document = Document()
 document.styles["Normal"].font.name = "Times New Roman"
+document.styles["Normal"].font.size = docx.shared.Pt(12)
 document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 document.styles["Normal"].paragraph_format.space_after = docx.shared.Pt(1)
 
@@ -432,7 +433,6 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run(" %d " % original_papers_lst[cur_original_paper_no]['tayin'], style="sci_heading")
     p.add_run("篇  )").bold = True
 
-
 def scrape_sci(seed_url):
 
     global original_papers_lst
@@ -541,6 +541,38 @@ def write_report(document):
     run.bold = True
     run.font.size = docx.shared.Pt(14)
 
+    document.add_paragraph("委托人：",style="indent")
+    document.add_paragraph("委托人单位：", style="indent")
+    document.add_paragraph("委托查询时间范围：", style="indent")
+
+    p = document.add_paragraph("")
+    run = p.add_run("检索数据库")
+    run.bold = True
+    run.font.size = docx.shared.Pt(14)
+
+    i = 1
+    if(len(gui.url_input.get())>1):
+        document.add_paragraph("%d. 美国《科学引文索引》（SCI-EXPANDED，网络版）" % i, style="indent")
+        i += 1
+    if(gui.yinyong_opt.get()==True):
+        document.add_paragraph("%d. 美国《Web of Science 核心合集：引文索引》（网络版）" % i, style="indent")
+        i += 1
+
+    if (gui.jcr_opt.get() == True):
+        document.add_paragraph("%d. 美国《期刊引用报告》（JCR，网络版）" % i, style="indent")
+        i += 1
+
+    if (gui.fenqu_opt.get() == True):
+        document.add_paragraph("%d. 中科院SCI分区表（网络版）" % i, style="indent")
+        i += 1
+    if (len(gui.ei_file_path.get()) > 1):
+        document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版）" % i, style="indent")
+        i += 1
+
+    p = document.add_paragraph("")
+    run = p.add_run("检索结果")
+    run.bold = True
+    run.font.size = docx.shared.Pt(14)
 
 
 
