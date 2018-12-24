@@ -210,11 +210,6 @@ def write_shoulu(document):
     style.font.name = "Times New Roman"
     style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
-    style = document.styles.add_style("indent", WD_STYLE_TYPE.PARAGRAPH)
-    style.paragraph_format.left_indent = docx.shared.Cm(0.5)
-    style.paragraph_format.space_after = docx.shared.Pt(1)
-    style.font.name = "Times New Roman"
-    style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
     i = 0
     for paper in original_papers_lst:
@@ -750,6 +745,7 @@ def author_contribution(document):
         tkinter.messagebox.showinfo("提示","作者格式有误")
         return
     else:
+        document.add_page_break()
         p = document.add_paragraph("")
         run = p.add_run("作者论文情况概览")
         run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
