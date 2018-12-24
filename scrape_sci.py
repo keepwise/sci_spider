@@ -20,7 +20,8 @@ import tkinter.filedialog
 import tkinter.messagebox
 import pymysql
 import pandas as pd
-
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import time
 
 
 headers = {
@@ -50,6 +51,7 @@ document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia
 
 original_papers_lst = []
 cur_original_paper_no = 0
+jcr_paragraph_position = 0
 
 def get_papers_queue(seed_url):
 
@@ -509,7 +511,7 @@ def scrape_sci(seed_url):
 
 def write_report(document):
 
-    global original_papers_lst
+    global original_papers_lst, jcr_paragraph_position
     ei_paper_num = 0
     sci_paper_num = 0
     ei_sci_paper_num = 0
@@ -589,14 +591,39 @@ def write_report(document):
             p.add_run(" %d " % ziyin_num).underline = True
             p.add_run("次。注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。")
     if ei_paper_num !=0:
-        p = document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版)收录")
+        p = document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版)收录" %i)
         p.add_run(" %d " % ei_paper_num).underline = True
         p.add_run("篇")
+
+        i += 1
     if ei_sci_paper_num !=0:
-        p = document.add_paragraph("EI、SCI共同收录")
+        p = document.add_paragraph("%d. EI、SCI共同收录" % i)
         p.add_run(" %d " % ei_sci_paper_num).underline = True
         p.add_run("篇")
+        i += 1
+    if gui.jcr_opt.get()==True:
 
+        p = document.add_paragraph("%d. JCR收录期刊种" %i)
+        jcr_paragraph_position = len(document.paragraphs)-1
+
+
+    document.add_paragraph("")
+    document.add_paragraph("（检索结果详见附件）")
+    document.add_paragraph("特此证明！")
+
+    document.add_paragraph("")
+    p = document.add_paragraph("        检索人：")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    p = document.add_paragraph("查证单位：教育部科技查新工作站（L27）")
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    p = document.add_paragraph("北京理工大学查新检索咨询中心")
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+
+    p = document.add_paragraph(time.strftime("%Y{y}%m{m}%d{d}").format(y='年',m='月',d='日'))
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 
 
@@ -632,8 +659,9 @@ def ei_shoulu():
         i += 1
 
 def scrape_jcr(document):
-    global original_papers_lst
+    global original_papers_lst, jcr_paragraph_position
 
+    jcr_shoulu_num = 0
     document.add_page_break()
     # 写入文件头
     p = document.add_paragraph("")
@@ -663,7 +691,10 @@ def scrape_jcr(document):
                 document.add_paragraph("ISSN: %s" % issn)
                 document.add_paragraph("2017年影响因子: %s" % jif)
                 i += 1
+                jcr_shoulu_num += 1
 
+        p = document.paragraphs[jcr_paragraph_position]
+        p.text = str(p.text).replace("种","%d 种"% jcr_shoulu_num)
     except Exception as e:
         print("JCR收录出错:%s" % str(e))
     finally:
