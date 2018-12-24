@@ -574,6 +574,31 @@ def write_report(document):
     run.bold = True
     run.font.size = docx.shared.Pt(14)
 
+    i = 1
+    if sci_paper_num !=0:
+        p = document.add_paragraph("%d.  美国《科学引文索引》(SCI-EXPANDED，网络版)收录" % i)
+        i += 1
+        p.add_run(" %d " % sci_paper_num).underline = True
+        p.add_run("篇")
+        if ziyin_num or tayin_num:
+            p.add_run("，在《Web of Science 核心合集：引文索引》中累计被引用")
+            p.add_run(" %d " % (ziyin_num+tayin_num)).underline = True
+            p.add_run("次（其中他人引用")
+            p.add_run(" %d " % tayin_num).underline = True
+            p.add_run("次，自引")
+            p.add_run(" %d " % ziyin_num).underline = True
+            p.add_run("次。注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。")
+    if ei_paper_num !=0:
+        p = document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版)收录")
+        p.add_run(" %d " % ei_paper_num).underline = True
+        p.add_run("篇")
+    if ei_sci_paper_num !=0:
+        p = document.add_paragraph("EI、SCI共同收录")
+        p.add_run(" %d " % ei_sci_paper_num).underline = True
+        p.add_run("篇")
+
+
+
 
 
 def ei_shoulu():
