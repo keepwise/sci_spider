@@ -76,7 +76,7 @@ def get_papers_queue(seed_url):
     except Exception as e:
         print("next_page: %s" % next_page)
         print(str(e))
-
+        tkinter.messagebox.showinfo("错误","获取paper URL错误:%s %s" %(next_page, str(e)))
     return url_queue
 
 def get_paper_record(url,database):
@@ -189,6 +189,7 @@ def get_paper_record(url,database):
             print("author: %s " % fullNames)
             print("source: %s" % source)
             print("错误：%s" % str(e))
+            tkinter.messagebox.showinfo("错误","获取文章详细信息失败 %s" % url)
     return paper
 
 
