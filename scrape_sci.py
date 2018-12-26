@@ -434,76 +434,81 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 def scrape_sci(seed_url):
 
     global original_papers_lst
-    orginal_papers_queue = get_papers_queue(seed_url)
-    orginal_total = len(orginal_papers_queue)
-    throttle = common.Throttle(delay)
+    try:
+        orginal_papers_queue = get_papers_queue(seed_url)
+        orginal_total = len(orginal_papers_queue)
+        throttle = common.Throttle(delay)
 
-    procced_url_num = 0
-    processed_origin_num = 0
+        procced_url_num = 0
+        processed_origin_num = 0
 
-    while orginal_papers_queue:
+        while orginal_papers_queue:
 
-        global cur_original_paper_no
-        original_url = orginal_papers_queue.popleft()
-        paper = {}
-        original_url = common.normalize(seed_url,original_url)
-        throttle.wait(original_url)
-        paper = get_paper_record(original_url,"SCIE")
-        procced_url_num += 1
-        gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
+            global cur_original_paper_no
+            original_url = orginal_papers_queue.popleft()
+            paper = {}
+            original_url = common.normalize(seed_url,original_url)
+            throttle.wait(original_url)
+            paper = get_paper_record(original_url,"SCIE")
+            procced_url_num += 1
+            gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
 
-        #gui.progress_bar.update()
-        print("progress_value: %d" % gui.progress_value.get())
-        original_papers_lst.append(paper)
+            #gui.progress_bar.update()
+            print("progress_value: %d" % gui.progress_value.get())
+            original_papers_lst.append(paper)
 
-        if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
-            write_word(paper, record_type='original')
-            citing_url = common.normalize(seed_url, paper['citing_url'])
+            if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
+                write_word(paper, record_type='original')
+                citing_url = common.normalize(seed_url, paper['citing_url'])
 
-            citing_papers_queue = get_papers_queue(citing_url)
-            cite_total = len(citing_papers_queue)
-            cur_cite = 1
-            while citing_papers_queue:
-                citation_url = citing_papers_queue.popleft()
-                citation_url = common.normalize(seed_url, citation_url)
+                citing_papers_queue = get_papers_queue(citing_url)
+                cite_total = len(citing_papers_queue)
+                cur_cite = 1
+                while citing_papers_queue:
+                    citation_url = citing_papers_queue.popleft()
+                    citation_url = common.normalize(seed_url, citation_url)
 
-                throttle.wait(citation_url)
-                citation = {}
-                citation = get_paper_record(citation_url, "SCIE")
-                procced_url_num += 1
-                gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
-                write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
-                cur_cite += 1
-        cur_original_paper_no += 1
-        processed_origin_num += 1
-        gui.progress_value.set((processed_origin_num / orginal_total) * 100)
-
-
-    shoulu_document = Document()
-    shoulu_document.styles["Normal"].font.name = "Times New Roman"
-    shoulu_document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-    shoulu_document.styles["Normal"].paragraph_format.space_after = docx.shared.Pt(1)
-
-    shoulu_document.styles["Default Paragraph Font"].font.name = "Times New Roman"
-    shoulu_document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+                    throttle.wait(citation_url)
+                    citation = {}
+                    citation = get_paper_record(citation_url, "SCIE")
+                    procced_url_num += 1
+                    gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
+                    write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
+                    cur_cite += 1
+            cur_original_paper_no += 1
+            processed_origin_num += 1
+            gui.progress_value.set((processed_origin_num / orginal_total) * 100)
 
 
-    ei_file = gui.ei_file_path.get()
-    if(len(ei_file.strip())>1):
-        ei_shoulu()
+        shoulu_document = Document()
+        shoulu_document.styles["Normal"].font.name = "Times New Roman"
+        shoulu_document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        shoulu_document.styles["Normal"].paragraph_format.space_after = docx.shared.Pt(1)
 
-    write_report(shoulu_document)
-    author_contribution(shoulu_document)
-    write_shoulu(shoulu_document)
+        shoulu_document.styles["Default Paragraph Font"].font.name = "Times New Roman"
+        shoulu_document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
 
-    if gui.jcr_opt.get() == True:
-        scrape_jcr(shoulu_document)
-    if gui.fenqu_opt.get() == True:
-        scrape_fenqu(shoulu_document)
-    gui.processing_info.insert(0, "顺利完成")
-    gui.bgn_button['state']= 'normal'
-    tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
+        ei_file = gui.ei_file_path.get()
+        if(len(ei_file.strip())>1):
+            ei_shoulu()
+
+        write_report(shoulu_document)
+        author_contribution(shoulu_document)
+        write_shoulu(shoulu_document)
+
+
+        if gui.jcr_opt.get() == True:
+            scrape_jcr(shoulu_document)
+        if gui.fenqu_opt.get() == True:
+            scrape_fenqu(shoulu_document)
+        gui.processing_info.insert(0, "顺利完成")
+
+        tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
+    except Exception as e:
+        tkinter.messagebox.showinfo("错误",str(e))
+    finally:
+        gui.bgn_button['state'] = 'normal'
 
 def write_report(document):
 
@@ -913,11 +918,22 @@ class Spider_gui(object):
         self.bgn_button.grid(row=8, column=2, sticky="e")
 
     def begin_crawl(self):
-        gui.bgn_button['state'] = 'disabled'
-        url = self.url_input.get()
+
+        url = str(self.url_input.get()).strip()
+        save_path = str(self.path.get()).strip()
+        rpt_num = str(self.bianhao_input.get()).strip()
+        try:
+            urllib.parse.urlparse(url)
+            if(len(rpt_num)<1):
+                tkinter.messagebox.showinfo("提示","报告编号不能为空")
+                return
+        except ValueError as e:
+            tkinter.messagebox.showinfo("错误","URL格式错误")
+            return
+
         t1 = threading.Thread(target=scrape_sci,args=(url,))
         t1.start()
-
+        gui.bgn_button['state'] = 'disabled'
 
 
 if __name__ == '__main__':
