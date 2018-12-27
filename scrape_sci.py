@@ -87,19 +87,19 @@ def get_paper_record(url,database):
     html = html.encode(encoding='utf-8')
     html = html.decode("utf-8")
 
-    file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
-    file.write(html)
+    #file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
+    #file.write(html)
     html_emt = etree.HTML(html)
     try:
 
         title = html_emt.xpath("//div[@class='title']/value/text()")[0]
-        authors = html_emt.xpath("//div[@class='l-content']//p[@class='FR_field']/span[contains(text(),'By:') or contains(text(),'作者:')]/following-sibling::a/text()")
+        authors = html_emt.xpath(
+            "//div[@class='l-content']//p[@class='FR_field']/span[contains(text(),'By:') or contains(text(),'作者:')]/following-sibling::a/text()|//div[@class='l-content']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
         fullNames = ""
         print(authors)
 
         for author in authors:
-
-            fullName = html_emt.xpath("//p[@class='FR_field']/span[contains(text(),'By:') or contains(text(),'作者:')]/following-sibling::a[text()='%s']/following-sibling::text()" % author)[0]
+            fullName = html_emt.xpath('//p[@class="FR_field"]/span[contains(text(),"By:") or contains(text(),"作者:")]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content"]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
             if fullName.find(";") != -1:
 
                 fullNames = fullNames + author + fullName
