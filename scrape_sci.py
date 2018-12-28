@@ -650,8 +650,15 @@ def ei_shoulu():
         else:
             ei_paper['title'] = title
             ei_paper['author'] = ei_papers['Author'][i]
-            ei_paper['source'] = ei_papers['Source'][i]+" 卷:"+str(ei_papers['Volume'][i])+"     页:"+str(ei_papers['Pages'][i]) +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
-            ei_paper['issn'] = ei_papers['ISSN'][i]
+            ei_paper['source'] = ei_papers['Source'][i]
+            if ei_papers.get("Volume","no")!="no":
+                ei_paper['source'] += " 卷:"+str(ei_papers['Volume'][i])
+            ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]) +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
+
+            if ei_papers.get("ISSN", "no") != "no":
+                ei_paper['issn'] = ei_papers['ISSN'][i]
+            else:
+                ei_paper['issn'] = ""
             ei_paper['accession number'] = ei_papers['Accession number'][i]
             ei_paper['shoulu'] = "EI"
             ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
