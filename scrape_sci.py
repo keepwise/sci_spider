@@ -434,49 +434,51 @@ def scrape_sci(seed_url):
 
     global original_papers_lst
     try:
-        orginal_papers_queue = get_papers_queue(seed_url)
-        orginal_total = len(orginal_papers_queue)
-        throttle = common.Throttle(delay)
+        if (len(seed_url)>1):
+            #如果URL不为空
+            orginal_papers_queue = get_papers_queue(seed_url)
+            orginal_total = len(orginal_papers_queue)
+            throttle = common.Throttle(delay)
 
-        procced_url_num = 0
-        processed_origin_num = 0
+            procced_url_num = 0
+            processed_origin_num = 0
 
-        while orginal_papers_queue:
+            while orginal_papers_queue:
 
-            global cur_original_paper_no
-            original_url = orginal_papers_queue.popleft()
-            paper = {}
-            original_url = common.normalize(seed_url,original_url)
-            throttle.wait(original_url)
-            paper = get_paper_record(original_url,"SCIE")
-            procced_url_num += 1
-            gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
+                global cur_original_paper_no
+                original_url = orginal_papers_queue.popleft()
+                paper = {}
+                original_url = common.normalize(seed_url,original_url)
+                throttle.wait(original_url)
+                paper = get_paper_record(original_url,"SCIE")
+                procced_url_num += 1
+                gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
 
-            #gui.progress_bar.update()
-            print("progress_value: %d" % gui.progress_value.get())
-            original_papers_lst.append(paper)
+                #gui.progress_bar.update()
+                print("progress_value: %d" % gui.progress_value.get())
+                original_papers_lst.append(paper)
 
-            if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
-                write_word(paper, record_type='original')
-                citing_url = common.normalize(seed_url, paper['citing_url'])
+                if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
+                    write_word(paper, record_type='original')
+                    citing_url = common.normalize(seed_url, paper['citing_url'])
 
-                citing_papers_queue = get_papers_queue(citing_url)
-                cite_total = len(citing_papers_queue)
-                cur_cite = 1
-                while citing_papers_queue:
-                    citation_url = citing_papers_queue.popleft()
-                    citation_url = common.normalize(seed_url, citation_url)
+                    citing_papers_queue = get_papers_queue(citing_url)
+                    cite_total = len(citing_papers_queue)
+                    cur_cite = 1
+                    while citing_papers_queue:
+                        citation_url = citing_papers_queue.popleft()
+                        citation_url = common.normalize(seed_url, citation_url)
 
-                    throttle.wait(citation_url)
-                    citation = {}
-                    citation = get_paper_record(citation_url, "SCIE")
-                    procced_url_num += 1
-                    gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
-                    write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
-                    cur_cite += 1
-            cur_original_paper_no += 1
-            processed_origin_num += 1
-            gui.progress_value.set((processed_origin_num / orginal_total) * 100)
+                        throttle.wait(citation_url)
+                        citation = {}
+                        citation = get_paper_record(citation_url, "SCIE")
+                        procced_url_num += 1
+                        gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
+                        write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
+                        cur_cite += 1
+                cur_original_paper_no += 1
+                processed_origin_num += 1
+                gui.progress_value.set((processed_origin_num / orginal_total) * 100)
 
 
         shoulu_document = Document()
@@ -924,14 +926,22 @@ class Spider_gui(object):
         url = str(self.url_input.get()).strip()
         save_path = str(self.path.get()).strip()
         rpt_num = str(self.bianhao_input.get()).strip()
+        author = str(self.author_input.get()).strip()
         try:
             urllib.parse.urlparse(url)
             if(len(rpt_num)<1):
                 tkinter.messagebox.showinfo("提示","报告编号不能为空")
                 return
-        except ValueError as e:
-            tkinter.messagebox.showinfo("错误","URL格式错误")
+            if(len(save_path)<1):
+                tkinter.messagebox.showinfo("提示", "保存路径不能为空")
+                return
+            if (len(author) < 1):
+                tkinter.messagebox.showinfo("提示", "作者不能为空")
+                return
+        except Exception as e:
+            tkinter.messagebox.showinfo("错误",str(e))
             return
+
 
         t1 = threading.Thread(target=scrape_sci,args=(url,))
         t1.start()
