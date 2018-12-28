@@ -110,8 +110,7 @@ def get_paper_record(url,database):
 
         SourceTitle = html_emt.xpath("//div[contains(@class,'block-record-info-source')]/p/span/value/text() | //div[contains(@class,'block-record-info-source')]/a/span/value/text() ")[0]
 
-        SourceList = html_emt.xpath(
-            "//div[contains(@class,'block-record-info-source')]/p[@class='FR_field']/node()/text() | //div[contains(@class,'block-record-info-source')]/p[@class='FR_field']/text()")
+        SourceList = html_emt.xpath("//div[contains(@class,'block-record-info-source')]/p[@class='FR_field']/node()/text() | //div[contains(@class,'block-record-info-source')]/p[@class='FR_field']/text()")
 
         source = SourceTitle + " "
 
@@ -818,13 +817,16 @@ def author_contribution(document):
             paper_cells[0].text = str(paper_num)
             paper_cells[1].text = paper['title']
             if paper.get("wos_no",'not') != 'not':
-                paper_cells[1].text += "\n WOS:" + paper['wos_no']
+                paper_cells[1].text += "\n" + paper['wos_no']
             if paper.get('accession number','not') != 'not':
                 paper_cells[1].text += "\n Accession Number:" + str(paper['accession number'])
 
             paper_cells[2].text = paper['shoulu']
-            if paper.get('ziyin','000') != '000':
-                paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
+            if(gui.yinyong_opt.get()==True):
+                if paper.get('ziyin','000') != '000':
+                    paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
+            else:
+                paper_cells[3].text = "未查询"
             paper_cells[4].text = ""
             if paper['bool_first_author']:
                 paper_cells[4].text += "第一作者  "
