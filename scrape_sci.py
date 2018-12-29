@@ -63,21 +63,25 @@ def get_papers_queue(seed_url):
     url_queue = queue.deque()
     html = common.download(url=seed_url,proxy=None,num_retries=num_retries,headers=headers)
     html_emt = etree.HTML(html)
-    url_list = html_emt.xpath("//a[contains(@class,'snowplow-full-record')]/@href")
-    for url in url_list:
-        url_queue.append(url)
-    next_page = html_emt.xpath("//a[contains(@class,'snowplow-navigation-nextpage-bottom')]/@href")
+    page_title = html_emt.xpath("//title[contains(text(),'Citing Articles') or contains(text(),'施引文献')]")
+    if page_title is None:
+        return
+    else:
+        url_list = html_emt.xpath("//a[contains(@class,'snowplow-full-record')]/@href")
+        for url in url_list:
+            url_queue.append(url)
+        next_page = html_emt.xpath("//a[contains(@class,'snowplow-navigation-nextpage-bottom')]/@href")
 
-    try:
-        if len(next_page) != 0:
-            next_page = common.normalize(seed_url,next_page[0])
-            throttle.wait(next_page)
-            url_queue.extend(get_papers_queue(seed_url=next_page))
-    except Exception as e:
-        print("next_page: %s" % next_page)
-        print(str(e))
-        tkinter.messagebox.showinfo("错误","获取paper URL错误:%s %s" %(next_page, str(e)))
-    return url_queue
+        try:
+            if len(next_page) != 0:
+                next_page = common.normalize(seed_url,next_page[0])
+                throttle.wait(next_page)
+                url_queue.extend(get_papers_queue(seed_url=next_page))
+        except Exception as e:
+            print("next_page: %s" % next_page)
+            print(str(e))
+            tkinter.messagebox.showinfo("错误","获取paper URL错误:%s %s" %(next_page, str(e)))
+        return url_queue
 
 def get_paper_record(url,database):
     global url_crawled_num, num_retries, delay, proxy, headers
@@ -182,7 +186,6 @@ def get_paper_record(url,database):
         paper['tayin'] = 0
         paper['shoulu'] = database
     except Exception as e:
-
             print("获取文章详细信息失败,url: %s " % url)
             print("tite: %s" %  title)
             print("author: %s " % fullNames)
@@ -459,23 +462,25 @@ def scrape_sci(seed_url):
                 original_papers_lst.append(paper)
 
                 if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
-                    write_word(paper, record_type='original')
+
                     citing_url = common.normalize(seed_url, paper['citing_url'])
 
                     citing_papers_queue = get_papers_queue(citing_url)
-                    cite_total = len(citing_papers_queue)
-                    cur_cite = 1
-                    while citing_papers_queue:
-                        citation_url = citing_papers_queue.popleft()
-                        citation_url = common.normalize(seed_url, citation_url)
+                    if citing_papers_queue is not None:
+                        write_word(paper, record_type='original')
+                        cite_total = len(citing_papers_queue)
+                        cur_cite = 1
+                        while citing_papers_queue:
+                            citation_url = citing_papers_queue.popleft()
+                            citation_url = common.normalize(seed_url, citation_url)
 
-                        throttle.wait(citation_url)
-                        citation = {}
-                        citation = get_paper_record(citation_url, "SCIE")
-                        procced_url_num += 1
-                        gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
-                        write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
-                        cur_cite += 1
+                            throttle.wait(citation_url)
+                            citation = {}
+                            citation = get_paper_record(citation_url, "SCIE")
+                            procced_url_num += 1
+                            gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
+                            write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
+                            cur_cite += 1
                 cur_original_paper_no += 1
                 processed_origin_num += 1
                 gui.progress_value.set((processed_origin_num / orginal_total) * 100)
