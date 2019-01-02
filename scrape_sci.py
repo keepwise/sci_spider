@@ -350,9 +350,17 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 
     for full_author in original_authors_lst:
         # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"匹配
-        if len(full_author)>1 and str(citation_authors).find(full_author) != -1:
-            author_len = len(full_author)
-            author_start = str(citation_authors).find(full_author)
+        full_author_pattern = full_author.replace("-","[-\s]?")
+        full_author_pattern = full_author_pattern.replace(", ","[,\s]+")
+        full_author_pattern = full_author_pattern.replace(" ","\s+")
+        full_author_pattern = full_author_pattern.replace("(","\(")
+        full_author_pattern = full_author_pattern.replace(")", "\)")
+
+        if len(full_author)>1 and re.search(full_author_pattern,citation_authors,re.M|re.I) is not None:
+            matchobj = re.search(full_author_pattern,citation_authors,re.M|re.I)
+            full_author_matched = matchobj.group()
+            author_len = len(full_author_matched)
+            author_start = str(citation_authors).find(full_author_matched)
             p.add_run(citation['author'][0:author_start])
             p.add_run(citation['author'][author_start:(author_start+author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
             p.add_run(citation['author'][(author_start + author_len):])
@@ -369,7 +377,15 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                 full_name = "(" + full_name.strip()
             else:
                 full_name = str(full_author).strip()
-            if len(full_name)>1 and str(citation_authors).find(full_name) != -1:
+
+            full_name = full_name.replace(", ","[,\s]+")
+            full_name = full_name.replace("-","[-\s]?")
+            full_name = full_name.replace(" ","\s+")
+
+
+            if len(full_name)>1 and re.search(full_name,citation_authors,re.M| re.I) is not None:
+
+                full_name = re.search(full_name,citation_authors,re.M| re.I).group()
                 author_len = len(full_name)
                 author_start = str(citation_authors).find(full_name)
                 p.add_run(citation['author'][0:author_start])
@@ -400,10 +416,12 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
             for full_author in original_authors_lst:
                 if str(full_author).find("(") != -1:
                     basic_name = str(full_author).split("(")[0]
-                    basic_name = basic_name.strip()
+                    # 这里有问题要注意比如 Li, J 匹配上了Li, JF实际是不匹配的，应该测试Li, J (是否匹配
+                    basic_name = basic_name.strip() + " ("
                     if str(citation_authors).find(basic_name) != -1:
                         author_len = len(basic_name)
                         author_start = str(citation_authors).find(basic_name)
+
                         p.add_run(citation['author'][0:author_start])
                         p.add_run(citation['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.GREEN
                         p.add_run(citation['author'][(author_start + author_len):])
@@ -777,6 +795,7 @@ def author_contribution(document):
         #表格包括1.序号，2.文章题目 3.收录情况 4,引用情况  5.贡献情况
         hdr_cells = table.rows[0].cells
         hdr_cells[0].text = "序号"
+        hdr_cells[0].width = 10
         hdr_cells[1].text = "标题"
         hdr_cells[2].text = "收录情况"
         hdr_cells[3].text = "引用情况"
