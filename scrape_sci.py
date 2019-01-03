@@ -879,6 +879,10 @@ class Spider_gui(object):
         ei_file = tkinter.filedialog.askopenfilename()
         self.ei_file_path.set(ei_file)
 
+    def select_wos_path(self):
+        wos_file = tkinter.filedialog.askopenfilename()
+        self.wos_file_path.set(wos_file)
+
     def __init__(self):
         self.window = tkinter.Tk()
 
@@ -888,6 +892,7 @@ class Spider_gui(object):
         self.yinyong_opt = tkinter.BooleanVar()
         self.progress_value = tkinter.IntVar()
         self.ei_file_path = tkinter.StringVar()
+        self.wos_file_path = tkinter.StringVar()
 
         self.jcr_opt.set(False)
         self.yinyong_opt.set(False)
@@ -896,8 +901,9 @@ class Spider_gui(object):
         self.window.title("检索报告 by 北理工图书馆 不懂如山")
         self.window.iconbitmap("working.ico")
 
-        self.url_label = tkinter.Label(self.window, text="URL:")
-        self.url_input = tkinter.Entry(self.window, width=50)
+        self.wos_label = tkinter.Label(self.window, text="WOS文件:")
+        self.wos_input = tkinter.Entry(self.window, width=50, textvariable=self.wos_file_path)
+        self.wos_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_wos_path)
 
         self.path_label = tkinter.Label(self.window, text="保存路径：")
         self.path_input = tkinter.Entry(self.window, width=50, textvariable=self.path)
@@ -927,8 +933,9 @@ class Spider_gui(object):
         self.bgn_button = tkinter.Button(self.window, command=self.begin_crawl, text="开始")
 
     def gui_arrange(self):
-        self.url_label.grid(row=1, column=1)
-        self.url_input.grid(row=1, column=2)
+        self.wos_label.grid(row=1, column=1)
+        self.wos_input.grid(row=1, column=2)
+        self.wos_path_button.grid(row=1, column=3)
 
         self.path_label.grid(row=2, column=1)
         self.path_input.grid(row=2, column=2)
