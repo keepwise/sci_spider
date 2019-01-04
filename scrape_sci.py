@@ -55,6 +55,8 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
+DEBUG = True
+
 def get_papers_queue(seed_url):
 
     global url_crawled_num, num_retries, delay, proxy,headers
@@ -456,10 +458,12 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 def get_wos_originals(path):
 
     global  wos_cited_papers
-    papers_df = pd.read_csv(gui.wos_file_path.get())
+    papers_df = pd.read_csv(gui.wos_file_path.get(),sep="\t",index_col=False)
     original_total = papers_df.shape[0]
     papers_lst = []
 
+    if DEBUG == True:
+        print(papers_df.head())
     i = 0
     while i<papers_df.shape[0]:
         paper = {}
@@ -470,7 +474,7 @@ def get_wos_originals(path):
 
         j = 0
         for author in au:
-            paper['author'] += str(author)+" ("+af[j]+")"
+            paper['author'] += str(author)+" ("+str(af[j])+")"
             j += 1
 
         paper['full_author'] = papers_df['AF'][i]
@@ -487,6 +491,9 @@ def get_wos_originals(path):
         paper['reprint_author'] = papers_df['RP'][i]
         paper['address'] = papers_df['C1'][i]
         paper['shoulu'] = "SCIE"
+
+        if DEBUG == True:
+            print(paper)
 
         i += 1
         papers_lst.append(paper)
@@ -530,9 +537,11 @@ def write_yinyong(paper,num,SID):
         cite_total = len(citing_papers_queue)
         cur_cite = 1
         while citing_papers_queue:
+
             citation_url = citing_papers_queue.popleft()
             citation_url = common.normalize(seed_url, citation_url)
-
+            if DEBUG == True:
+                print(citation_url)
             throttle.wait(citation_url)
             citation = {}
             citation = get_paper_record(citation_url, "SCIE")
@@ -574,6 +583,7 @@ def scrape_sci(seed_url):
     try:
         # 如果WOS文件不为空
         if (len(gui.wos_file_path.get())>1):
+
             original_papers_lst = get_wos_originals(path=gui.wos_file_path.get())
             if gui.yinyong_opt.get() == True and wos_cited_papers != 0:
                 SID = get_wos_sid()

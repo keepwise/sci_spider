@@ -25,6 +25,7 @@ url = "http://apps.webofknowledge.com/full_record.do?product=UA&search_mode=Mark
 request = urllib.request.Request(url=url, headers=headers)
 opener = urllib.request.build_opener()
 
+
 try:
     response = opener.open(request)
     #response.encoding = "utf-8"
