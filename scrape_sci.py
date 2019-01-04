@@ -52,6 +52,8 @@ document.styles['Default Paragraph Font']._element.rPr.rFonts.set(qn('w:eastAsia
 original_papers_lst = []
 cur_original_paper_no = 0
 jcr_paragraph_position = 0
+wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
+processed_url_num = 0 #处理的链接数量
 
 def get_papers_queue(seed_url):
 
@@ -453,6 +455,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 
 def get_wos_originals(path):
 
+    global  wos_cited_papers
     papers_df = pd.read_csv(gui.wos_file_path.get())
     original_total = papers_df.shape[0]
     papers_lst = []
@@ -471,63 +474,117 @@ def get_wos_originals(path):
             j += 1
 
         paper['full_author'] = papers_df['AF'][i]
-        paper['source'] = papers_df['SO'][i] + " 卷:" + papers_df['VL'] + " 页:"
+        paper['source'] = papers_df['SO'][i] + " 卷:" + papers_df['VL'] + " 页:" + papers_df['BP'][i] + "-" + papers_df['EP'][i] + "出版年:" + papers_df['PY'][i]
+        paper['wos_cited_num'] = papers_df['TC'][i]
+        if paper['wos_cited_num'] != '0':
+            wos_cited_papers += 1
+        paper['ziyin'] = 0
+        paper['tayin'] = 0
+        paper['wos_no'] = papers_df['UT'][i]
+        paper['issn'] = papers_df['SN'][i]
+        paper['eissn'] = papers_df['EI'][i]
 
+        paper['reprint_author'] = papers_df['RP'][i]
+        paper['address'] = papers_df['C1'][i]
+        paper['shoulu'] = "SCIE"
 
         i += 1
+        papers_lst.append(paper)
 
+    return papers_lst
+
+
+def write_yinyong(paper,num,SID):
+
+    global url_crawled_num, num_retries, delay, proxy, headers, processed_url_num,cur_original_paper_no
+    cur_original_paper_no = num
+    wos = paper['wos']
+    time_now = datetime.datetime.now()
+    cur_year = time_now.year
+    url="http://apps.webofknowledge.com/WOS_GeneralSearch.do?fieldCount=1&action=search&product=WOS&search_mode=GeneralSearch&max_field_count=25&max_field_notice="+\
+         "%E6%B3%A8%E6%84%8F%3A+%E6%97%A0%E6%B3%95%E6%B7%BB%E5%8A%A0%E5%8F%A6%E4%B8%80%E5%AD%97%E6%AE%B5%E3%80%82&input_invalid_notice="+\
+         "%E6%A3%80%E7%B4%A2%E9%94%99%E8%AF%AF%3A+%E8%AF%B7%E8%BE%93%E5%85%A5%E6%A3%80%E7%B4%A2%E8%AF%8D%E3%80%82&exp_notice="+\
+         "%E6%A3%80%E7%B4%A2%E9%94%99%E8%AF%AF%3A+%E4%B8%93%E5%88%A9%E6%A3%80%E7%B4%A2%E8%AF%8D%E5%8F%AF%E5%9C%A8%E5%A4%9A"+\
+         "%E4%B8%AA%E5%AE%B6%E6%97%8F%E4%B8%AD%E6%89%BE%E5%88%B0+%28&input_invalid_notice_limits=+%3Cbr%2F%3E%E6%B3%A8%3A+%E6%BB%9A%E5%8A%A8%E6%A1%86%E4%B8%AD%E6%98%BE%E7"+\
+         "%A4%BA%E7%9A%84%E5%AD%97%E6%AE%B5%E5%BF%85%E9%A1%BB%E8%87%B3%E5%B0%91%E4%B8%8E%E4%B8%80%E4%B8%AA%E5%85%B6%E4%BB%96%E6%A3%80%E7%B4%A2%E5%AD%97%E6%AE%B5%E7%9B%B8%E7"+\
+         "%BB%84%E9%85%8D%E3%80%82&sa_params=WOS%7C%7C"+SID+"%7Chttp%3A%2F%2Fapps.webofknowledge.com%7C%27&formUpdated=true&value%28input1%29="+paper['wos']+"&value"+\
+         "%28select1%29=AD&x=46&y=19&value%28hidInput1%29=&limitStatus=expanded&ss_lemmatization=On&ss_spellchecking=Suggest&SinceLastVisit_UTC=&SinceLastVisit_DATE=&range"+\
+         "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions=SCI&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
+        "ss_numDefaultGeneralSearchFields=1&ss_query_language=&rs_sort_by=PY.D%3BLD.D%3BSO.A%3BVL.D%3BPG.A%3BAU.A&SID="+SID
+
+    throttle = common.Throttle(delay)
+
+    url_queue = queue.deque()
+    html = common.download(url=url, proxy=None, num_retries=num_retries, headers=headers)
+    html_emt = etree.HTML(html)
+
+    citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")
+
+    seed_url = "http://apps.webofknowledge.com"
+    citing_url = common.normalize(seed_url, citing_url)
+
+    citing_papers_queue = get_papers_queue(citing_url)
+
+    if citing_papers_queue is not None:
+        write_word(paper, record_type='original')
+        cite_total = len(citing_papers_queue)
+        cur_cite = 1
+        while citing_papers_queue:
+            citation_url = citing_papers_queue.popleft()
+            citation_url = common.normalize(seed_url, citation_url)
+
+            throttle.wait(citation_url)
+            citation = {}
+            citation = get_paper_record(citation_url, "SCIE")
+            processed_url_num += 1
+            gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
+            write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
+            cur_cite += 1
+        return True
+    else:
+        return False
+
+
+
+def get_wos_sid():
+    global headers
+    url = "http://webofknowledge.com/?DestApp=WOS&editions=SCI"
+    request = urllib.request.Request(url=url, headers=headers)
+    opener = urllib.request.build_opener()
+    SID = ""
+    try:
+        response = opener.open(request)
+        html = response.read().decode("UTF-8")
+        html = html.decode("utf-8")
+
+        # file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
+        # file.write(html)
+
+        html_emt = etree.HTML(html)
+        SID = html_emt.xpath("//input[@name='SID']/@value")[0]
+    except Exception as e:
+        tkinter.messagebox.showinfo("错误","获取SID错误")
+        return None
+
+    return  SID
 
 def scrape_sci(seed_url):
 
-    global original_papers_lst
+    global original_papers_lst, wos_cited_papers
     try:
+        # 如果WOS文件不为空
         if (len(gui.wos_file_path.get())>1):
-            #如果WOS文件不为空
             original_papers_lst = get_wos_originals(path=gui.wos_file_path.get())
-
-
-            procced_url_num = 0
-            processed_origin_num = 0
-
-            i = 0
-            while i<original_total:
-
-                global cur_original_paper_no
-
-                paper = {}
-
-                paper = get_paper_record(,"SCIE")
-                procced_url_num += 1
-                gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
-
-                #gui.progress_bar.update()
-                print("progress_value: %d" % gui.progress_value.get())
-                original_papers_lst.append(paper)
-
-                if len(paper['citing_url'])>1 and gui.yinyong_opt.get():
-
-                    citing_url = common.normalize(seed_url, paper['citing_url'])
-
-                    citing_papers_queue = get_papers_queue(citing_url)
-                    if citing_papers_queue is not None:
-                        write_word(paper, record_type='original')
-                        cite_total = len(citing_papers_queue)
-                        cur_cite = 1
-                        while citing_papers_queue:
-                            citation_url = citing_papers_queue.popleft()
-                            citation_url = common.normalize(seed_url, citation_url)
-
-                            throttle.wait(citation_url)
-                            citation = {}
-                            citation = get_paper_record(citation_url, "SCIE")
-                            procced_url_num += 1
-                            gui.processing_info.insert(0, "正在处理 %d: %s" % (procced_url_num, original_url))
-                            write_word(citation,record_type='citation',cite_total=cite_total, cur_cite=cur_cite)
-                            cur_cite += 1
-                cur_original_paper_no += 1
-                processed_origin_num += 1
-                gui.progress_value.set((processed_origin_num / orginal_total) * 100)
-
+            if gui.yinyong_opt.get() == True and wos_cited_papers != 0:
+                SID = get_wos_sid()
+                for paper in original_papers_lst:
+                    i = 1 #引用报告中文献序号
+                    j = 1
+                    if paper['wos_cited_num'] != '0':
+                       if write_yinyong(paper, i,SID) == True:
+                           i += 1
+                    gui.progress_value.set((j / wos_cited_papers) * 100)
+                    j += 1
 
         shoulu_document = Document()
         shoulu_document.styles["Normal"].font.name = "Times New Roman"
@@ -545,7 +602,6 @@ def scrape_sci(seed_url):
         write_report(shoulu_document)
         author_contribution(shoulu_document)
         write_shoulu(shoulu_document)
-
 
         if gui.jcr_opt.get() == True:
             scrape_jcr(shoulu_document)
@@ -674,8 +730,6 @@ def write_report(document):
 
     p = document.add_paragraph(time.strftime("%Y{y}%m{m}%d{d}").format(y='年',m='月',d='日'))
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
-
 
 
 def ei_shoulu():
@@ -924,7 +978,7 @@ class Spider_gui(object):
         self.fenqu_opt.set(False)
 
         self.window.title("检索报告 by 北理工图书馆 不懂如山")
-        self.window.iconbitmap("working.ico")
+#        self.window.iconbitmap("working.ico")
 
         self.wos_label = tkinter.Label(self.window, text="WOS文件:")
         self.wos_input = tkinter.Entry(self.window, width=50, textvariable=self.wos_file_path)
@@ -986,7 +1040,7 @@ class Spider_gui(object):
 
     def begin_crawl(self):
 
-        url = str(self.url_input.get()).strip()
+        url = str(self.wos_input.get()).strip()
         save_path = str(self.path.get()).strip()
         rpt_num = str(self.bianhao_input.get()).strip()
         author = str(self.author_input.get()).strip()
