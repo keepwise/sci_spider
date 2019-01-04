@@ -451,27 +451,52 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run(" %d " % original_papers_lst[cur_original_paper_no]['tayin'], style="sci_heading")
     p.add_run("篇  )").bold = True
 
+def get_wos_originals(path):
+
+    papers_df = pd.read_csv(gui.wos_file_path.get())
+    original_total = papers_df.shape[0]
+    papers_lst = []
+
+    i = 0
+    while i<papers_df.shape[0]:
+        paper = {}
+        paper['title'] = papers_df['TI'][i]
+
+        au = str(papers_df['AU'][i]).split(";")
+        af = str(papers_df['AF'][i]).split(";")
+
+        j = 0
+        for author in au:
+            paper['author'] += str(author)+" ("+af[j]+")"
+            j += 1
+
+        paper['full_author'] = papers_df['AF'][i]
+        paper['source'] = papers_df['SO'][i] + " 卷:" + papers_df['VL'] + " 页:"
+
+
+        i += 1
+
+
 def scrape_sci(seed_url):
 
     global original_papers_lst
     try:
-        if (len(seed_url)>1):
-            #如果URL不为空
-            orginal_papers_queue = get_papers_queue(seed_url)
-            orginal_total = len(orginal_papers_queue)
-            throttle = common.Throttle(delay)
+        if (len(gui.wos_file_path.get())>1):
+            #如果WOS文件不为空
+            original_papers_lst = get_wos_originals(path=gui.wos_file_path.get())
+
 
             procced_url_num = 0
             processed_origin_num = 0
 
-            while orginal_papers_queue:
+            i = 0
+            while i<original_total:
 
                 global cur_original_paper_no
-                original_url = orginal_papers_queue.popleft()
+
                 paper = {}
-                original_url = common.normalize(seed_url,original_url)
-                throttle.wait(original_url)
-                paper = get_paper_record(original_url,"SCIE")
+
+                paper = get_paper_record(,"SCIE")
                 procced_url_num += 1
                 gui.processing_info.insert(0,"正在处理 %d: %s" % (procced_url_num, original_url))
 
