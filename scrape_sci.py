@@ -473,12 +473,18 @@ def get_wos_originals(path):
         af = str(papers_df['AF'][i]).split(";")
 
         j = 0
+        paper['author'] = ""
         for author in au:
-            paper['author'] += str(author)+" ("+str(af[j])+")"
+            paper['author'] += str(author)+" ("+str(af[j])+");"
             j += 1
 
         paper['full_author'] = papers_df['AF'][i]
-        paper['source'] = papers_df['SO'][i] + " 卷:" + papers_df['VL'] + " 页:" + papers_df['BP'][i] + "-" + papers_df['EP'][i] + "出版年:" + papers_df['PY'][i]
+        so =  str(papers_df['SO'][i])
+        vl =  str(papers_df['VL'])
+        bp =  str(papers_df['BP'][i])
+        ep = str(papers_df['EP'][i])
+        py = str(papers_df['PY'][i])
+        paper['source'] = so + " 卷:" + vl + " 页:" + bp + "-" + ep + " 出版年:" + py
         paper['wos_cited_num'] = papers_df['TC'][i]
         if paper['wos_cited_num'] != '0':
             wos_cited_papers += 1
@@ -502,11 +508,10 @@ def get_wos_originals(path):
 
 
 def write_yinyong(paper,num,SID):
-
     global url_crawled_num, num_retries, delay, proxy, headers, processed_url_num,cur_original_paper_no
     cur_original_paper_no = num
-    wos = paper['wos']
-    time_now = datetime.datetime.now()
+    wos = paper['wos_no']
+    time_now = datetime.now()
     cur_year = time_now.year
     url="http://apps.webofknowledge.com/WOS_GeneralSearch.do?fieldCount=1&action=search&product=WOS&search_mode=GeneralSearch&max_field_count=25&max_field_notice="+\
          "%E6%B3%A8%E6%84%8F%3A+%E6%97%A0%E6%B3%95%E6%B7%BB%E5%8A%A0%E5%8F%A6%E4%B8%80%E5%AD%97%E6%AE%B5%E3%80%82&input_invalid_notice="+\
@@ -514,7 +519,7 @@ def write_yinyong(paper,num,SID):
          "%E6%A3%80%E7%B4%A2%E9%94%99%E8%AF%AF%3A+%E4%B8%93%E5%88%A9%E6%A3%80%E7%B4%A2%E8%AF%8D%E5%8F%AF%E5%9C%A8%E5%A4%9A"+\
          "%E4%B8%AA%E5%AE%B6%E6%97%8F%E4%B8%AD%E6%89%BE%E5%88%B0+%28&input_invalid_notice_limits=+%3Cbr%2F%3E%E6%B3%A8%3A+%E6%BB%9A%E5%8A%A8%E6%A1%86%E4%B8%AD%E6%98%BE%E7"+\
          "%A4%BA%E7%9A%84%E5%AD%97%E6%AE%B5%E5%BF%85%E9%A1%BB%E8%87%B3%E5%B0%91%E4%B8%8E%E4%B8%80%E4%B8%AA%E5%85%B6%E4%BB%96%E6%A3%80%E7%B4%A2%E5%AD%97%E6%AE%B5%E7%9B%B8%E7"+\
-         "%BB%84%E9%85%8D%E3%80%82&sa_params=WOS%7C%7C"+SID+"%7Chttp%3A%2F%2Fapps.webofknowledge.com%7C%27&formUpdated=true&value%28input1%29="+paper['wos']+"&value"+\
+         "%BB%84%E9%85%8D%E3%80%82&sa_params=WOS%7C%7C"+SID+"%7Chttp%3A%2F%2Fapps.webofknowledge.com%7C%27&formUpdated=true&value%28input1%29="+paper['wos_no']+"&value"+\
          "%28select1%29=AD&x=46&y=19&value%28hidInput1%29=&limitStatus=expanded&ss_lemmatization=On&ss_spellchecking=Suggest&SinceLastVisit_UTC=&SinceLastVisit_DATE=&range"+\
          "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions=SCI&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
         "ss_numDefaultGeneralSearchFields=1&ss_query_language=&rs_sort_by=PY.D%3BLD.D%3BSO.A%3BVL.D%3BPG.A%3BAU.A&SID="+SID
@@ -564,7 +569,7 @@ def get_wos_sid():
     try:
         response = opener.open(request)
         html = response.read().decode("UTF-8")
-        html = html.decode("utf-8")
+        #html = html.decode("utf-8")
 
         # file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
         # file.write(html)
@@ -669,7 +674,7 @@ def write_report(document):
     run.font.size = docx.shared.Pt(14)
 
     i = 1
-    if(len(gui.url_input.get())>1):
+    if(len(gui.wos_input.get())>1):
         document.add_paragraph("%d. 美国《科学引文索引》（SCI-EXPANDED，网络版）" % i, style="indent")
         i += 1
     if(gui.yinyong_opt.get()==True):
