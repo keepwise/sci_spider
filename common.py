@@ -103,7 +103,7 @@ def download(url, headers, proxy, num_retries, data=None):
     try:
         response = opener.open(request)
         response.encoding = "utf-8"
-        html = response.read()
+        html = response.read().decode("utf-8")
         #print(html)
 
         code = response.code

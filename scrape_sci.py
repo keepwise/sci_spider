@@ -101,13 +101,14 @@ def get_paper_record(url,database):
     try:
 
         title = html_emt.xpath("//div[@class='title']/value/text()")[0]
-        authors = html_emt.xpath(
-            "//div[@class='l-content']//p[@class='FR_field']/span[contains(text(),'By:') or contains(text(),'作者:')]/following-sibling::a/text()|//div[@class='l-content']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
+        #authors = html_emt.xpath( "//div[@class='l-content']//p[@class='FR_field']/span[contains(text(),'By:') or contains(text(),'作者:')]/following-sibling::a/text()|//div[@class='l-content']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
+        authors = html_emt.xpath("//div[@class='l-content']//p[@class='FR_field']/span[text()='By:' or text()='作者:']/following-sibling::a/text()|//div[@class='l-content']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
         fullNames = ""
         print(authors)
 
         for author in authors:
-            fullName = html_emt.xpath('//p[@class="FR_field"]/span[contains(text(),"By:") or contains(text(),"作者:")]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content"]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
+            #fullName = html_emt.xpath('//p[@class="FR_field"]/span[contains(text(),"By:") or contains(text(),"作者:")]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content"]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
+            fullName = html_emt.xpath( '//p[@class="FR_field"]/span[text()="By:" or text()="作者:"]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content"]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
             if fullName.find(";") != -1:
 
                 fullNames = fullNames + author + fullName
@@ -253,6 +254,10 @@ def write_shoulu(document):
         p.add_run(str(paper['reprint_author']).replace("nan",""))
 
         p = document.add_paragraph("", style="indent")
+        p.add_run("作者地址: ", style="label")
+        p.add_run(str(paper['address']).replace("nan", ""))
+
+        p = document.add_paragraph("", style="indent")
         p.add_run("ISSN: ", style="label")
         p.add_run(str(paper['issn']).replace("nan",""))
 
@@ -313,6 +318,10 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
         p = document.add_paragraph("")
         p.add_run("Source: ").bold = True
         p.add_run(record['source'])
+
+        p = document.add_paragraph("")
+        p.add_run("WOS: ").bold = True
+        p.add_run(record['wos_no'])
 
         p = document.add_paragraph("", style="yinwen")
         yinyong_paragraph_position = len(document.paragraphs)-1
@@ -442,6 +451,10 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run("Source: ").bold = True
     p.add_run(citation['source'])
 
+    p = document.add_paragraph("", style="yinwen")
+    p.add_run("WOS: ").bold = True
+    p.add_run(citation['wos_no'])
+
     original_papers_lst[cur_original_paper_no]['tayin'] = cite_total - original_papers_lst[cur_original_paper_no]['ziyin']
     yinyong_paragraph_position = original_papers_lst[cur_original_paper_no]['yinyong_paragraph_position']
 
@@ -480,7 +493,7 @@ def get_wos_originals(path):
 
         paper['full_author'] = papers_df['AF'][i]
         so =  str(papers_df['SO'][i])
-        vl =  str(papers_df['VL'])
+        vl =  str(papers_df['VL'][i])
         bp =  str(papers_df['BP'][i])
         ep = str(papers_df['EP'][i])
         py = str(papers_df['PY'][i])
@@ -520,7 +533,7 @@ def write_yinyong(paper,num,SID):
          "%E4%B8%AA%E5%AE%B6%E6%97%8F%E4%B8%AD%E6%89%BE%E5%88%B0+%28&input_invalid_notice_limits=+%3Cbr%2F%3E%E6%B3%A8%3A+%E6%BB%9A%E5%8A%A8%E6%A1%86%E4%B8%AD%E6%98%BE%E7"+\
          "%A4%BA%E7%9A%84%E5%AD%97%E6%AE%B5%E5%BF%85%E9%A1%BB%E8%87%B3%E5%B0%91%E4%B8%8E%E4%B8%80%E4%B8%AA%E5%85%B6%E4%BB%96%E6%A3%80%E7%B4%A2%E5%AD%97%E6%AE%B5%E7%9B%B8%E7"+\
          "%BB%84%E9%85%8D%E3%80%82&sa_params=WOS%7C%7C"+SID+"%7Chttp%3A%2F%2Fapps.webofknowledge.com%7C%27&formUpdated=true&value%28input1%29="+paper['wos_no']+"&value"+\
-         "%28select1%29=AD&x=46&y=19&value%28hidInput1%29=&limitStatus=expanded&ss_lemmatization=On&ss_spellchecking=Suggest&SinceLastVisit_UTC=&SinceLastVisit_DATE=&range"+\
+         "%28select1%29=UT&x=46&y=19&value%28hidInput1%29=&limitStatus=expanded&ss_lemmatization=On&ss_spellchecking=Suggest&SinceLastVisit_UTC=&SinceLastVisit_DATE=&range"+\
          "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions=SCI&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
         "ss_numDefaultGeneralSearchFields=1&ss_query_language=&rs_sort_by=PY.D%3BLD.D%3BSO.A%3BVL.D%3BPG.A%3BAU.A&SID="+SID
 
@@ -528,9 +541,16 @@ def write_yinyong(paper,num,SID):
 
     url_queue = queue.deque()
     html = common.download(url=url, proxy=None, num_retries=num_retries, headers=headers)
+    html = html.encode(encoding='utf-8')
+    html = html.decode("utf-8")
+
+    if DEBUG :
+        f = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\tt.html","w",encoding="utf-8")
+        f.write(html)
+        f.close()
     html_emt = etree.HTML(html)
 
-    citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")
+    citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")[0]
 
     seed_url = "http://apps.webofknowledge.com"
     citing_url = common.normalize(seed_url, citing_url)
@@ -592,9 +612,9 @@ def scrape_sci(seed_url):
             original_papers_lst = get_wos_originals(path=gui.wos_file_path.get())
             if gui.yinyong_opt.get() == True and wos_cited_papers != 0:
                 SID = get_wos_sid()
+                i = 1  # 引用报告中文献序号
+                j = 1
                 for paper in original_papers_lst:
-                    i = 1 #引用报告中文献序号
-                    j = 1
                     if paper['wos_cited_num'] != '0':
                        if write_yinyong(paper, i,SID) == True:
                            i += 1
@@ -947,6 +967,9 @@ def author_contribution(document):
                 paper_cells[1].text += "\n" + paper['wos_no']
             if paper.get('accession number','not') != 'not':
                 paper_cells[1].text += "\n Accession Number:" + str(paper['accession number'])
+            if paper.get("full_author","not") != "not":
+                paper_cells[1].text += "\n 作者:" + str(paper['full_author'])
+            paper_cells[1].text += "\n 来源:" + paper['source']
 
             paper_cells[2].text = paper['shoulu']
             if(gui.yinyong_opt.get()==True):
