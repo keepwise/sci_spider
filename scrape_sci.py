@@ -485,17 +485,17 @@ def get_wos_originals(path):
         ep = str(papers_df['EP'][i])
         py = str(papers_df['PY'][i])
         paper['source'] = so + " 卷:" + vl + " 页:" + bp + "-" + ep + " 出版年:" + py
-        paper['wos_cited_num'] = papers_df['TC'][i]
+        paper['wos_cited_num'] = str(papers_df['TC'][i])
         if paper['wos_cited_num'] != '0':
             wos_cited_papers += 1
         paper['ziyin'] = 0
         paper['tayin'] = 0
-        paper['wos_no'] = papers_df['UT'][i]
-        paper['issn'] = papers_df['SN'][i]
-        paper['eissn'] = papers_df['EI'][i]
+        paper['wos_no'] = str(papers_df['UT'][i])
+        paper['issn'] = str(papers_df['SN'][i])
+        paper['eissn'] = str(papers_df['EI'][i])
 
-        paper['reprint_author'] = papers_df['RP'][i]
-        paper['address'] = papers_df['C1'][i]
+        paper['reprint_author'] = str(papers_df['RP'][i])
+        paper['address'] = str(papers_df['C1'][i])
         paper['shoulu'] = "SCIE"
 
         if DEBUG == True:
