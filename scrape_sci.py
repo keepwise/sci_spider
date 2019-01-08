@@ -55,7 +55,7 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = True
+DEBUG = False
 
 def get_papers_queue(seed_url):
 
@@ -265,6 +265,12 @@ def write_shoulu(document):
             p = document.add_paragraph("", style="indent")
             p.add_run("eISSN: ", style="label")
             p.add_run(paper['eissn'])
+        if paper.get("hc","not")!="not":
+            hc = str(paper['hc']).replace("nan","")
+            if len(hc)>1:
+                p = document.add_paragraph("", style="indent")
+                p.add_run("是否高被引: ", style="label")
+                p.add_run(paper['hc'])
 
         p = document.add_paragraph("", style="indent")
         p.add_run("收录情况: ", style="label")
@@ -469,7 +475,6 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run("篇  )").bold = True
 
 def get_wos_originals(path):
-
     global  wos_cited_papers
     papers_df = pd.read_csv(gui.wos_file_path.get(),sep="\t",index_col=False)
     original_total = papers_df.shape[0]
@@ -511,6 +516,9 @@ def get_wos_originals(path):
         paper['address'] = str(papers_df['C1'][i])
         paper['shoulu'] = "SCIE"
 
+        #高被引
+        if papers_df.get("HC") is not None:
+            paper['hc'] = str(papers_df['HC'][i])
         if DEBUG == True:
             print(paper)
 
@@ -518,7 +526,6 @@ def get_wos_originals(path):
         papers_lst.append(paper)
 
     return papers_lst
-
 
 def write_yinyong(paper,num,SID):
     global url_crawled_num, num_retries, delay, proxy, headers, processed_url_num,cur_original_paper_no
@@ -578,8 +585,6 @@ def write_yinyong(paper,num,SID):
     else:
         return False
 
-
-
 def get_wos_sid():
     global headers
     url = "http://webofknowledge.com/?DestApp=WOS&editions=SCI"
@@ -635,7 +640,7 @@ def scrape_sci(seed_url):
             ei_shoulu()
 
         write_report(shoulu_document)
-        author_contribution(shoulu_document)
+        report_overview(shoulu_document)
         write_shoulu(shoulu_document)
 
         if gui.jcr_opt.get() == True:
@@ -753,7 +758,7 @@ def write_report(document):
     document.add_paragraph("特此证明！")
 
     document.add_paragraph("")
-    p = document.add_paragraph("        检索人：")
+    p = document.add_paragraph("                        检索人：")
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     p = document.add_paragraph("查证单位：教育部科技查新工作站（L27）")
@@ -765,7 +770,6 @@ def write_report(document):
 
     p = document.add_paragraph(time.strftime("%Y{y}%m{m}%d{d}").format(y='年',m='月',d='日'))
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
 
 def ei_shoulu():
     '''将EI收录的论文添加到original_paper_lst'''
@@ -788,11 +792,11 @@ def ei_shoulu():
             ei_paper['title'] = title
             ei_paper['author'] = ei_papers['Author'][i]
             ei_paper['source'] = ei_papers['Source'][i]
-            if ei_papers.get("Volume","no")!="no":
-                ei_paper['source'] += " 卷:"+str(ei_papers['Volume'][i])
-            ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]) +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
+            if ei_papers.get("Volume") is not None:
+                ei_paper['source'] += " 卷:"+str(ei_papers['Volume'][i]).replace("nan","")
+            ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]).replace("nan","") +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
 
-            if ei_papers.get("ISSN", "no") != "no":
+            if ei_papers.get("ISSN") is not None:
                 ei_paper['issn'] = ei_papers['ISSN'][i]
             else:
                 ei_paper['issn'] = ""
@@ -805,8 +809,8 @@ def ei_shoulu():
         i += 1
 
 def scrape_jcr(document):
-    global original_papers_lst, jcr_paragraph_position
 
+    global original_papers_lst, jcr_paragraph_position
     jcr_shoulu_num = 0
     document.add_page_break()
     # 写入文件头
@@ -884,7 +888,7 @@ def scrape_fenqu(document):
         i += 1
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
-def author_contribution(document):
+def report_overview(document):
     '''查询作者是否第一作者、通讯作者'''
     global original_papers_lst
 
@@ -902,18 +906,34 @@ def author_contribution(document):
         run.font.highlight_color = WD_COLOR_INDEX.GRAY_25
         run.bold = True
 
-        table = document.add_table(rows=len(original_papers_lst)+1, cols=5)
+        #初始表格3列，序号、标题、收录
+        cols = 3
+
+        if gui.yinyong_opt.get()==True:
+            cols += 1
+
+        if gui.contribution_opt.get()==True:
+            cols += 1
+
+        table = document.add_table(rows=len(original_papers_lst)+1, cols=cols)
         table.style = "Table Grid"
         table.autofit = True
 
+        icols = 0
         #表格包括1.序号，2.文章题目 3.收录情况 4,引用情况  5.贡献情况
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = "序号"
-        hdr_cells[0].width = 10
-        hdr_cells[1].text = "标题"
-        hdr_cells[2].text = "收录情况"
-        hdr_cells[3].text = "引用情况"
-        hdr_cells[4].text = "贡献情况"
+        hdr_cells = table.rows[icols+0].cells
+        hdr_cells[icols+0].text = "序号"
+        hdr_cells[icols+1].text = "标题/作者/来源"
+        hdr_cells[icols+1].width = 5486400
+        icols += 1
+
+        hdr_cells[icols+1].text = "收录情况"
+        icols += 1
+        if gui.yinyong_opt.get() == True:
+            hdr_cells[icols+1].text = "引用情况"
+            icols += 1
+        if gui.contribution_opt.get()==True:
+            hdr_cells[icols+1].text = "贡献情况"
 
         capital_pattern = re.compile("[A-Z]")
 
@@ -925,6 +945,8 @@ def author_contribution(document):
         pattern_str = str(name_lst[0]).strip() + "[\s,]+" + capital_name
         paper_num = 1
         for paper in original_papers_lst:
+
+            icols = 0
             #匹配是否第一作者
             matchObj = re.match(pattern_str,paper['author'], re.M)
             if matchObj:
@@ -961,27 +983,37 @@ def author_contribution(document):
                         paper['bool_reprint_author'] = False
 
             paper_cells = table.rows[paper_num].cells
-            paper_cells[0].text = str(paper_num)
-            paper_cells[1].text = paper['title']
-            if paper.get("wos_no",'not') != 'not':
-                paper_cells[1].text += "\n" + paper['wos_no']
-            if paper.get('accession number','not') != 'not':
-                paper_cells[1].text += "\n Accession Number:" + str(paper['accession number'])
-            if paper.get("full_author","not") != "not":
-                paper_cells[1].text += "\n 作者:" + str(paper['full_author'])
-            paper_cells[1].text += "\n 来源:" + paper['source']
+            paper_cells[icols].text = str(paper_num)
+            icols += 1
+            paper_cells[icols].text = paper['title']
 
-            paper_cells[2].text = paper['shoulu']
+            if paper.get("wos_no",'not') != 'not':
+                paper_cells[icols].text += "\n" + paper['wos_no']
+            if paper.get('accession number','not') != 'not':
+                paper_cells[icols].text += "\n Accession Number:" + str(paper['accession number'])
+            if paper.get("full_author","not") != "not":
+                paper_cells[icols].text += "\n 作者:" + str(paper['full_author'])
+
+            paper_cells[icols].text += "\n 来源:" + paper['source']
+
+            icols += 1
+            paper_cells[icols].text = paper['shoulu']
+            if paper.get("hc", "not") != "not":
+                hc = str(paper['hc']).replace("nan","")
+                if len(hc)>1:
+                    paper_cells[icols].text += ", 高被引论文"
+            icols += 1
             if(gui.yinyong_opt.get()==True):
                 if paper.get('ziyin','000') != '000':
-                    paper_cells[3].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
-            else:
-                paper_cells[3].text = "未查询"
-            paper_cells[4].text = ""
-            if paper['bool_first_author']:
-                paper_cells[4].text += "第一作者  "
-            if paper['bool_reprint_author']:
-                paper_cells[4].text +="通讯作者"
+                    paper_cells[icols].text = "自引%d次，他引%d次" %(paper['ziyin'],paper['tayin'])
+
+                icols += 1
+            if gui.contribution_opt.get()==True:
+                paper_cells[icols].text = ""
+                if paper['bool_first_author']:
+                    paper_cells[icols].text += "第一作者  "
+                if paper['bool_reprint_author']:
+                    paper_cells[icols].text +="通讯作者"
             paper_num += 1
 
     document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
@@ -1007,6 +1039,9 @@ class Spider_gui(object):
         self.jcr_opt = tkinter.BooleanVar()
         self.fenqu_opt = tkinter.BooleanVar()
         self.yinyong_opt = tkinter.BooleanVar()
+        self.contribution_opt = tkinter.BooleanVar()
+        self.hcp_opt = tkinter.BooleanVar()
+
         self.progress_value = tkinter.IntVar()
         self.ei_file_path = tkinter.StringVar()
         self.wos_file_path = tkinter.StringVar()
@@ -1037,6 +1072,8 @@ class Spider_gui(object):
                                                    variable=self.jcr_opt)
         self.fenqu_checkbutton = tkinter.Checkbutton(self.window, text="中科院分区", onvalue=True, offvalue=False,
                                                      width=15, variable=self.fenqu_opt)
+        self.contribution_checkbutton = tkinter.Checkbutton(self.window,text="贡献", onvalue=True, offvalue=False,width=15,variable=self.contribution_opt)
+        self.hcp_checkbutton = tkinter.Checkbutton(self.window,text="高被引",onvalue=True, offvalue=False, width=15, variable=self.hcp_opt)
         self.yinyong_checkbutton = tkinter.Checkbutton(self.window,text="引用", onvalue=True, offvalue=False, width=15,variable=self.yinyong_opt)
 
         self.author_label = tkinter.Label(self.window,text="委托人英文名：")
@@ -1066,15 +1103,19 @@ class Spider_gui(object):
         self.bianhao_input.grid(row=4, column=2, sticky="w")
         self.JCR_checkbutton.grid(row=4, column=2 )
         self.fenqu_checkbutton.grid(row=4, column=2, sticky='e')
-        self.yinyong_checkbutton.grid(row=4, column=3, sticky='e')
 
-        self.author_label.grid(row=5, column=1)
-        self.author_input.grid(row=5,column=2, stick="w")
-        self.author_tip.grid(row=5,column=3,stick="w")
 
-        self.progress_bar.grid(row=6,column=2)
-        self.processing_info.grid(row=7, column=2)
-        self.bgn_button.grid(row=8, column=2, sticky="e")
+        self.yinyong_checkbutton.grid(row=5, column=2, sticky="w")
+        self.contribution_checkbutton.grid(row=5,column=2)
+        self.hcp_checkbutton.grid(row=5,column=2, padx=15,sticky="e")
+
+        self.author_label.grid(row=6, column=1)
+        self.author_input.grid(row=6,column=2, stick="w")
+        self.author_tip.grid(row=6,column=3,stick="w")
+
+        self.progress_bar.grid(row=7,column=2)
+        self.processing_info.grid(row=8, column=2)
+        self.bgn_button.grid(row=9, column=2, sticky="e")
 
     def begin_crawl(self):
 
