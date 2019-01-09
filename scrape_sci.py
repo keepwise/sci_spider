@@ -340,7 +340,7 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
         p.add_run("    ", style="sci_heading")
         p.add_run("篇  )").bold = True
 
-        original_papers_lst[cur_original_paper_no]['yinyong_paragraph_position'] = yinyong_paragraph_position
+        original_papers_lst[cur_original_paper_no-1]['yinyong_paragraph_position'] = yinyong_paragraph_position
     if record_type == "citation":
         ziyin_tayin(record,cite_total,cur_cite)
 
@@ -351,13 +351,13 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     '''区分自引他引，并写入word文档'''
     global original_papers_lst,cur_original_paper_no
 
-    original_authors = original_papers_lst[cur_original_paper_no]['author']
+    original_authors = original_papers_lst[cur_original_paper_no-1]['author']
     original_authors_lst = original_authors.split(";")
     original_authors_lst = [str(x).strip() for x in original_authors_lst]
     #生成类似下述列表 [0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"
 
     citation_authors = citation['author']
-    original_paper = original_papers_lst[cur_original_paper_no]
+    original_paper = original_papers_lst[cur_original_paper_no-1]
 
     p = document.add_paragraph("", style="yinwen")
     p.add_run("Record %d of %d" % (cur_cite, cite_total)).bold = True
@@ -384,7 +384,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
             p.add_run(citation['author'][author_start:(author_start+author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
             p.add_run(citation['author'][(author_start + author_len):])
 
-            original_papers_lst[cur_original_paper_no]['ziyin'] += 1
+            original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
             break
     else:
         #如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
@@ -411,7 +411,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                 p.add_run(citation['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
                 p.add_run(citation['author'][(author_start + author_len):])
 
-                original_papers_lst[cur_original_paper_no]['ziyin'] += 1
+                original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
                 break
             else:
                 #如果full_name中含有",",如 Wang, Xinyu
@@ -425,7 +425,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                         p.add_run(citation['author'][author_start:(author_start + author_len)]).font.highlight_color = WD_COLOR_INDEX.RED
                         p.add_run(citation['author'][(author_start + author_len):])
 
-                        original_papers_lst[cur_original_paper_no]['ziyin'] += 1
+                        original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
                         break
         else:
             # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
@@ -448,7 +448,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                         basic_matched_num += 1
 
                         if basic_matched_num>1:
-                            original_papers_lst[cur_original_paper_no]['ziyin'] += 1
+                            original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
                             break
             else:
                 p.add_run(citation['author'])
@@ -461,17 +461,17 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run("WOS: ").bold = True
     p.add_run(citation['wos_no'])
 
-    original_papers_lst[cur_original_paper_no]['tayin'] = cite_total - original_papers_lst[cur_original_paper_no]['ziyin']
-    yinyong_paragraph_position = original_papers_lst[cur_original_paper_no]['yinyong_paragraph_position']
+    original_papers_lst[cur_original_paper_no-1]['tayin'] = cite_total - original_papers_lst[cur_original_paper_no-1]['ziyin']
+    yinyong_paragraph_position = original_papers_lst[cur_original_paper_no-1]['yinyong_paragraph_position']
 
     p = document.paragraphs[yinyong_paragraph_position]
     p = p.clear()
     p.add_run("引用文献", style="sci_heading")
     p.add_run(": (自引").bold = True
-    p.add_run(" %d " % original_papers_lst[cur_original_paper_no]['ziyin'], style="sci_heading")
+    p.add_run(" %d " % original_papers_lst[cur_original_paper_no-1]['ziyin'], style="sci_heading")
     p.add_run("篇  ").bold = True
     p.add_run("他引").bold = True
-    p.add_run(" %d " % original_papers_lst[cur_original_paper_no]['tayin'], style="sci_heading")
+    p.add_run(" %d " % original_papers_lst[cur_original_paper_no-1]['tayin'], style="sci_heading")
     p.add_run("篇  )").bold = True
 
 def get_wos_originals(path):
@@ -569,7 +569,6 @@ def write_yinyong(paper,num,SID):
         cite_total = len(citing_papers_queue)
         cur_cite = 1
         while citing_papers_queue:
-
             citation_url = citing_papers_queue.popleft()
             citation_url = common.normalize(seed_url, citation_url)
             if DEBUG == True:
