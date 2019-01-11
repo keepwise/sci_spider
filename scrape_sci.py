@@ -55,7 +55,7 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = False
+DEBUG = True
 
 def get_papers_queue(seed_url):
 
@@ -557,32 +557,40 @@ def write_yinyong(paper,num,SID):
         f.close()
     html_emt = etree.HTML(html)
 
-    citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")[0]
+    try:
+        citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")
+        if len(citing_url)<1:
+            return False
+        else:
+            citing_url = citing_url[0]
 
-    seed_url = "http://apps.webofknowledge.com"
-    citing_url = common.normalize(seed_url, citing_url)
+        seed_url = "http://apps.webofknowledge.com"
+        citing_url = common.normalize(seed_url, citing_url)
 
-    citing_papers_queue = get_papers_queue(citing_url)
+        citing_papers_queue = get_papers_queue(citing_url)
 
-    if citing_papers_queue is not None:
-        write_word(paper, record_type='original')
-        cite_total = len(citing_papers_queue)
-        cur_cite = 1
-        while citing_papers_queue:
-            citation_url = citing_papers_queue.popleft()
-            citation_url = common.normalize(seed_url, citation_url)
-            if DEBUG == True:
-                print(citation_url)
-            throttle.wait(citation_url)
-            citation = {}
-            citation = get_paper_record(citation_url, "SCIE")
-            processed_url_num += 1
-            gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
-            write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
-            cur_cite += 1
-        return True
-    else:
-        return False
+        if citing_papers_queue is not None:
+            write_word(paper, record_type='original')
+            cite_total = len(citing_papers_queue)
+            cur_cite = 1
+            while citing_papers_queue:
+                citation_url = citing_papers_queue.popleft()
+                citation_url = common.normalize(seed_url, citation_url)
+                if DEBUG == True:
+                    print(citation_url)
+                throttle.wait(citation_url)
+                citation = {}
+                citation = get_paper_record(citation_url, "SCIE")
+                processed_url_num += 1
+                gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
+                write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
+                cur_cite += 1
+            return True
+        else:
+            return False
+    except Exception as e:
+        raise
+        return  False
 
 def get_wos_sid():
     global headers
@@ -650,7 +658,10 @@ def scrape_sci(seed_url):
 
         tkinter.messagebox.showinfo("提示","主人，活儿干完啦！")
     except Exception as e:
-        tkinter.messagebox.showinfo("错误",str(e))
+        if DEBUG:
+            raise
+        else:
+            tkinter.messagebox.showinfo("错误",str(e))
     finally:
         gui.bgn_button['state'] = 'normal'
 
