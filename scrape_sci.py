@@ -276,7 +276,7 @@ def write_shoulu(document):
         p.add_run("收录情况: ", style="label")
         p.add_run(paper['shoulu'])
 
-        document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+"_shoulu.docx")
+        document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+"_baogao.docx")
 
 def write_word(record, record_type,cite_total=0, cur_cite=0):
     #record_type注明是原文还是引文
@@ -345,7 +345,7 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
         ziyin_tayin(record,cite_total,cur_cite)
 
     #print(str(gui.directory_input.get()).strip())
-    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+".docx")
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+"_yinyong.docx")
 
 def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     '''区分自引他引，并写入word文档'''
@@ -476,7 +476,11 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 
 def get_wos_originals(path):
     global  wos_cited_papers
-    papers_df = pd.read_csv(gui.wos_file_path.get(),sep="\t",index_col=False)
+    csv_path = str(gui.wos_file_path.get()).encode(encoding="utf-8")
+    csv_path = csv_path.decode("utf-8")
+    f = open(csv_path,encoding="utf-8")
+    papers_df = pd.read_csv(f,sep="\t",index_col=False)
+    f.close()
     original_total = papers_df.shape[0]
     papers_lst = []
 
@@ -625,10 +629,10 @@ def scrape_sci(seed_url):
             if gui.yinyong_opt.get() == True and wos_cited_papers != 0:
                 SID = get_wos_sid()
                 i = 1  # 引用报告中文献序号
-                j = 1
+                j = 1 #当期要处理的报告原文序号
                 for paper in original_papers_lst:
                     if paper['wos_cited_num'] != '0':
-                       if write_yinyong(paper, i,SID) == True:
+                       if write_yinyong(paper, j,SID) == True:
                            i += 1
                     gui.progress_value.set((j / wos_cited_papers) * 100)
                     j += 1
@@ -858,7 +862,7 @@ def scrape_jcr(document):
     except Exception as e:
         print("JCR收录出错:%s" % str(e))
     finally:
-        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
+        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
 
 def scrape_fenqu(document):
     global original_papers_lst
@@ -896,7 +900,7 @@ def scrape_fenqu(document):
         table.rows[2].cells[0].text = "大类"
 
         i += 1
-    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
 
 def report_overview(document):
     '''查询作者是否第一作者、通讯作者'''
@@ -1026,7 +1030,7 @@ def report_overview(document):
                     paper_cells[icols].text +="通讯作者"
             paper_num += 1
 
-    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
 
 class Spider_gui(object):
 
