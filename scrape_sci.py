@@ -55,7 +55,7 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = True
+DEBUG = False
 
 def get_papers_queue(seed_url):
 
@@ -370,8 +370,8 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     for full_author in original_authors_lst:
         # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"匹配
         full_author_pattern = full_author.replace("-","[-\s]?")
-        full_author_pattern = full_author_pattern.replace(", ","[,\s]+")
-        full_author_pattern = full_author_pattern.replace(" ","\s+")
+        full_author_pattern = full_author_pattern.replace(", ","[,\s]*")
+        full_author_pattern = full_author_pattern.replace(" ","[,\s]*")
         full_author_pattern = full_author_pattern.replace("(","\(")
         full_author_pattern = full_author_pattern.replace(")", "\)")
 
@@ -397,9 +397,9 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
             else:
                 full_name = str(full_author).strip()
 
-            full_name = full_name.replace(", ","[,\s]+")
-            full_name = full_name.replace("-","[-\s]?")
-            full_name = full_name.replace(" ","\s+")
+            full_name = full_name.replace(", ","[,\s]*")
+            full_name = full_name.replace("-","[-\s]*")
+            full_name = full_name.replace(" ","[,\s]*")
 
 
             if len(full_name)>1 and re.search(full_name,citation_authors,re.M| re.I) is not None:
@@ -1001,14 +1001,18 @@ def report_overview(document):
             icols += 1
             paper_cells[icols].text = paper['title']
 
-            if paper.get("wos_no",'not') != 'not':
-                paper_cells[icols].text += "\n" + paper['wos_no']
-            if paper.get('accession number','not') != 'not':
-                paper_cells[icols].text += "\n Accession Number:" + str(paper['accession number'])
+
             if paper.get("full_author","not") != "not":
                 paper_cells[icols].text += "\n 作者:" + str(paper['full_author'])
+            else:
+                paper_cells[icols].text += "\n 作者:" + str(paper['author'])
 
             paper_cells[icols].text += "\n 来源:" + paper['source']
+
+            if paper.get("wos_no", 'not') != 'not':
+                paper_cells[icols].text += "\n" + paper['wos_no']
+            if paper.get('accession number', 'not') != 'not':
+                paper_cells[icols].text += "\n Accession Number:" + str(paper['accession number'])
 
             icols += 1
             paper_cells[icols].text = paper['shoulu']
