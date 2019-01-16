@@ -55,7 +55,7 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = False
+DEBUG = True
 
 def get_papers_queue(seed_url):
 
@@ -906,6 +906,8 @@ def report_overview(document):
     '''查询作者是否第一作者、通讯作者'''
     global original_papers_lst
 
+    wos_jiansuo = ""  #生成WOS的 入藏号检索式，保存下来，便于重复使用
+    ei_jiansuo = ""
     if len(document.paragraphs)>1:
         del document.paragraphs[:]
     author = gui.author_input.get()
@@ -1010,9 +1012,17 @@ def report_overview(document):
             paper_cells[icols].text += "\n 来源:" + paper['source']
 
             if paper.get("wos_no", 'not') != 'not':
-                paper_cells[icols].text += "\n" + paper['wos_no']
+                paper_cells[icols].text += "\n" + str(paper['wos_no'])
+                if wos_jiansuo == "":
+                    wos_jiansuo += "UT="+ str(paper['wos_no'])
+                else:
+                    wos_jiansuo += " OR UT="+str(paper['wos_no'])
             if paper.get('accession number', 'not') != 'not':
                 paper_cells[icols].text += "\n Accession Number:" + str(paper['accession number'])
+                if ei_jiansuo =="":
+                    ei_jiansuo += str(paper['accession number']) + " WN AN"
+                else:
+                    ei_jiansuo +=" OR " + str(paper['accession number']) + "WN AN"
 
             icols += 1
             paper_cells[icols].text = paper['shoulu']
@@ -1034,7 +1044,17 @@ def report_overview(document):
                     paper_cells[icols].text +="通讯作者"
             paper_num += 1
 
-    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
+        if wos_jiansuo != "":
+            f = open(str(gui.path_input.get()).strip() + "\\"+ "wos_jiansuo.txt", "w")
+            f.write(wos_jiansuo)
+            f.close()
+        if ei_jiansuo != "":
+            f = open(str(gui.path_input.get()).strip() + "\\"+"ei_jiansuo.txt","w")
+            f.write(ei_jiansuo)
+            f.close()
+        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
+
+
 
 class Spider_gui(object):
 
