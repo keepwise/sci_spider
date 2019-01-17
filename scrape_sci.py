@@ -821,8 +821,12 @@ def ei_shoulu():
             ei_paper['shoulu'] = "EI"
             if ei_papers.get('Corresponding author') is not None:
                 ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
+            else:
+                ei_paper['reprint_author'] = ""
             if ei_papers.get('Author affiliation') is not None:
                 ei_paper['address'] = ei_papers['Author affiliation'][i]
+            else:
+                ei_paper['address'] = ""
             original_papers_lst.append(ei_paper)
 
         i += 1
@@ -1002,6 +1006,8 @@ def report_overview(document):
                         paper['bool_reprint_author'] = True
                     else:
                         paper['bool_reprint_author'] = False
+            else:
+                paper['bool_reprint_author'] = False
 
             paper_cells = table.rows[paper_num].cells
             paper_cells[icols].text = str(paper_num)
