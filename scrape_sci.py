@@ -55,7 +55,7 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = True
+DEBUG = False
 
 def get_papers_queue(seed_url):
 
@@ -808,7 +808,10 @@ def ei_shoulu():
             ei_paper['source'] = ei_papers['Source'][i]
             if ei_papers.get("Volume") is not None:
                 ei_paper['source'] += " 卷:"+str(ei_papers['Volume'][i]).replace("nan","")
-            ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]).replace("nan","") +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
+            if ei_papers.get("Pages") is not None:
+                ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]).replace("nan","")
+
+            ei_paper['source'] += " 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
 
             if ei_papers.get("ISSN") is not None:
                 ei_paper['issn'] = ei_papers['ISSN'][i]
@@ -816,8 +819,10 @@ def ei_shoulu():
                 ei_paper['issn'] = ""
             ei_paper['accession number'] = ei_papers['Accession number'][i]
             ei_paper['shoulu'] = "EI"
-            ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
-            ei_paper['address'] = ei_papers['Author affiliation'][i]
+            if ei_papers.get('Corresponding author') is not None:
+                ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
+            if ei_papers.get('Author affiliation') is not None:
+                ei_paper['address'] = ei_papers['Author affiliation'][i]
             original_papers_lst.append(ei_paper)
 
         i += 1
@@ -1022,7 +1027,7 @@ def report_overview(document):
                 if ei_jiansuo =="":
                     ei_jiansuo += str(paper['accession number']) + " WN AN"
                 else:
-                    ei_jiansuo +=" OR " + str(paper['accession number']) + "WN AN"
+                    ei_jiansuo +=" OR " + str(paper['accession number']) + " WN AN"
 
             icols += 1
             paper_cells[icols].text = paper['shoulu']
