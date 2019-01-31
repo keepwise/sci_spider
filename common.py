@@ -7,7 +7,9 @@ from lxml import etree
 import urllib.robotparser
 import urllib.parse
 import urllib.request
+import socket
 
+socket.setdefaulttimeout(30)
 
 download_url_total = 0
 def link_crawler(seed_url, link_regex=None, delay=5, max_depth=-1, max_urls=-1, headers=None, user_agent='wswp',
@@ -95,18 +97,18 @@ def download(url, headers, proxy, num_retries, data=None):
 
     download_url_total += 1
     print('Downloading: %d  %s' % (download_url_total, url))
-    request = urllib.request.Request(url=url, headers=headers)
+
+    html = ""
+    req = urllib.request.Request(url=url, headers=headers)
     opener = urllib.request.build_opener()
     if proxy:
         proxy_params = {urllib.parse.urlparse(url).scheme: proxy}
         opener.add_handler(urllib.ProxyHandler(proxy_params))
     try:
-        response = opener.open(request)
-        response.encoding = "utf-8"
-        html = response.read().decode("utf-8")
-        #print(html)
-
-        code = response.code
+        with opener.open(req) as response:
+            response.encoding = "utf-8"
+            html = response.read().decode("utf-8")
+            code = response.code
 
     except urllib.error.URLError as e:
         print('Download error: %s' % e.reason)
@@ -119,8 +121,14 @@ def download(url, headers, proxy, num_retries, data=None):
         else:
             code = None
     except urllib.error.HTTPError as e:
-
+        if  num_retries>0:
+            return download(url, headers, proxy, num_retries - 1, data)
         print("Download error: %s" % e.reason)
+    except socket.timeout as e:
+        if  num_retries>0:
+            return download(url, headers, proxy, num_retries - 1, data)
+    finally:
+        pass
 
     return html
 

@@ -36,7 +36,7 @@ headers = {
 }
 
 url_crawled_num = 0  #爬取的原文数量
-num_retries = 2   #爬取链接时尝试的次数
+num_retries = 5   #爬取链接时尝试的次数
 delay = 5   #请求间延迟的时间
 proxy = None
 wroten_original_num = 0  #已经写入的被引文献数量
@@ -55,7 +55,7 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = False
+DEBUG = True
 
 def get_papers_queue(seed_url):
 
@@ -95,9 +95,15 @@ def get_paper_record(url,database):
     html = html.encode(encoding='utf-8')
     html = html.decode("utf-8")
 
-    #file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
-    #file.write(html)
+
     html_emt = etree.HTML(html)
+    #如果html为空，说明获取页面信息失败
+    if html_emt is None:
+        file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
+        log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+        file.write(log)
+        file.close()
+        return None
     try:
 
         title = html_emt.xpath("//div[@class='title']/value/text()")[0]
@@ -555,12 +561,15 @@ def write_yinyong(paper,num,SID):
     html = html.encode(encoding='utf-8')
     html = html.decode("utf-8")
 
-    if DEBUG :
-        f = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\tt.html","w",encoding="utf-8")
-        f.write(html)
-        f.close()
-    html_emt = etree.HTML(html)
 
+
+    html_emt = etree.HTML(html)
+    if html_emt is None:
+        file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
+        log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+        file.write(log)
+        file.close()
+        return False
     try:
         citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")
         if len(citing_url)<1:
@@ -585,10 +594,11 @@ def write_yinyong(paper,num,SID):
                 throttle.wait(citation_url)
                 citation = {}
                 citation = get_paper_record(citation_url, "SCIE")
-                processed_url_num += 1
-                gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
-                write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
-                cur_cite += 1
+                if citation is not None:
+                    processed_url_num += 1
+                    gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
+                    write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
+                    cur_cite += 1
             return True
         else:
             return False
