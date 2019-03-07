@@ -37,7 +37,7 @@ headers = {
 
 url_crawled_num = 0  #爬取的原文数量
 num_retries = 5   #爬取链接时尝试的次数
-delay = 5   #请求间延迟的时间
+delay = 4   #请求间延迟的时间
 proxy = None
 wroten_original_num = 0  #已经写入的被引文献数量
 document = Document()
@@ -55,7 +55,10 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-DEBUG = True
+report_save_path = ""
+
+DEBUG = False
+
 
 def get_papers_queue(seed_url):
 
@@ -88,7 +91,7 @@ def get_papers_queue(seed_url):
         return url_queue
 
 def get_paper_record(url,database):
-    global url_crawled_num, num_retries, delay, proxy, headers
+    global url_crawled_num, num_retries, delay, proxy, headers, report_save_path
 
     paper = {}
     html = common.download(url=url, proxy=None, num_retries=num_retries,headers=headers)
@@ -99,10 +102,11 @@ def get_paper_record(url,database):
     html_emt = etree.HTML(html)
     #如果html为空，说明获取页面信息失败
     if html_emt is None:
-        file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
-        log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
-        file.write(log)
-        file.close()
+        if DEBUG:
+            file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
+            log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+            file.write(log)
+            file.close()
         return None
     try:
 
@@ -198,13 +202,14 @@ def get_paper_record(url,database):
         paper['shoulu'] = database
     except Exception as e:
             print("获取文章详细信息失败,url: %s " % url)
-            print("tite: %s" %  title)
-            print("author: %s " % fullNames)
-            print("source: %s" % source)
-            print("错误：%s" % str(e))
-            tkinter.messagebox.showinfo("错误","获取文章详细信息失败 %s" % url)
+            #return get_paper_record(url,database)
+            file = open(report_save_path+ "\\log.txt", "a", encoding="utf-8")
+            log = "获取文章详细信息失败:"
+            log += url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+            file.write(log)
+            file.close()
+            return  None
     return paper
-
 
 def write_shoulu(document):
 
@@ -480,7 +485,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run(" %d " % original_papers_lst[cur_original_paper_no-1]['tayin'], style="sci_heading")
     p.add_run("篇  )").bold = True
 
-def get_wos_originals(path):
+def get_sci_originals(path):
     global  wos_cited_papers
     csv_path = str(gui.wos_file_path.get()).encode(encoding="utf-8")
     csv_path = csv_path.decode("utf-8")
@@ -537,12 +542,74 @@ def get_wos_originals(path):
 
     return papers_lst
 
+def get_ssci_originals(path):
+    global  wos_cited_papers
+    csv_path = str(gui.ssci_file_path.get()).encode(encoding="utf-8")
+    csv_path = csv_path.decode("utf-8")
+    f = open(csv_path,encoding="utf-8")
+    papers_df = pd.read_csv(f,sep="\t",index_col=False)
+    f.close()
+    original_total = papers_df.shape[0]
+    papers_lst = []
+
+    if DEBUG == True:
+        print(papers_df.head())
+    i = 0
+    while i<papers_df.shape[0]:
+        paper = {}
+        paper['title'] = papers_df['TI'][i]
+
+        au = str(papers_df['AU'][i]).split(";")
+        af = str(papers_df['AF'][i]).split(";")
+
+        j = 0
+        paper['author'] = ""
+        for author in au:
+            paper['author'] += str(author)+" ("+str(af[j])+");"
+            j += 1
+
+        paper['full_author'] = papers_df['AF'][i]
+        so =  str(papers_df['SO'][i])
+        vl =  str(papers_df['VL'][i])
+        bp =  str(papers_df['BP'][i])
+        ep = str(papers_df['EP'][i])
+        py = str(papers_df['PY'][i])
+        paper['source'] = so + " 卷:" + vl + " 页:" + bp + "-" + ep + " 出版年:" + py
+        paper['wos_cited_num'] = str(papers_df['TC'][i])
+        if paper['wos_cited_num'] != '0':
+            wos_cited_papers += 1
+        paper['ziyin'] = 0
+        paper['tayin'] = 0
+        paper['wos_no'] = str(papers_df['UT'][i])
+        paper['issn'] = str(papers_df['SN'][i])
+        paper['eissn'] = str(papers_df['EI'][i])
+
+        paper['reprint_author'] = str(papers_df['RP'][i])
+        paper['address'] = str(papers_df['C1'][i])
+        paper['shoulu'] = "SSCI"
+
+        #高被引
+        if papers_df.get("HC") is not None:
+            paper['hc'] = str(papers_df['HC'][i])
+        if DEBUG == True:
+            print(paper)
+
+        i += 1
+        papers_lst.append(paper)
+
+    return papers_lst
+
 def write_yinyong(paper,num,SID):
     global url_crawled_num, num_retries, delay, proxy, headers, processed_url_num,cur_original_paper_no
     cur_original_paper_no = num
     wos = paper['wos_no']
     time_now = datetime.now()
     cur_year = time_now.year
+    database = ''
+    if paper['shoulu'] == 'SCIE':
+        database = 'SCI'
+    if paper['shoulu'] == 'SSCI':
+        database = 'SSCI'
     url="http://apps.webofknowledge.com/WOS_GeneralSearch.do?fieldCount=1&action=search&product=WOS&search_mode=GeneralSearch&max_field_count=25&max_field_notice="+\
          "%E6%B3%A8%E6%84%8F%3A+%E6%97%A0%E6%B3%95%E6%B7%BB%E5%8A%A0%E5%8F%A6%E4%B8%80%E5%AD%97%E6%AE%B5%E3%80%82&input_invalid_notice="+\
          "%E6%A3%80%E7%B4%A2%E9%94%99%E8%AF%AF%3A+%E8%AF%B7%E8%BE%93%E5%85%A5%E6%A3%80%E7%B4%A2%E8%AF%8D%E3%80%82&exp_notice="+\
@@ -551,7 +618,7 @@ def write_yinyong(paper,num,SID):
          "%A4%BA%E7%9A%84%E5%AD%97%E6%AE%B5%E5%BF%85%E9%A1%BB%E8%87%B3%E5%B0%91%E4%B8%8E%E4%B8%80%E4%B8%AA%E5%85%B6%E4%BB%96%E6%A3%80%E7%B4%A2%E5%AD%97%E6%AE%B5%E7%9B%B8%E7"+\
          "%BB%84%E9%85%8D%E3%80%82&sa_params=WOS%7C%7C"+SID+"%7Chttp%3A%2F%2Fapps.webofknowledge.com%7C%27&formUpdated=true&value%28input1%29="+paper['wos_no']+"&value"+\
          "%28select1%29=UT&x=46&y=19&value%28hidInput1%29=&limitStatus=expanded&ss_lemmatization=On&ss_spellchecking=Suggest&SinceLastVisit_UTC=&SinceLastVisit_DATE=&range"+\
-         "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions=SCI&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
+         "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions="+database+"&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
         "ss_numDefaultGeneralSearchFields=1&ss_query_language=&rs_sort_by=PY.D%3BLD.D%3BSO.A%3BVL.D%3BPG.A%3BAU.A&SID="+SID
 
     throttle = common.Throttle(delay)
@@ -565,10 +632,11 @@ def write_yinyong(paper,num,SID):
 
     html_emt = etree.HTML(html)
     if html_emt is None:
-        file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
-        log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
-        file.write(log)
-        file.close()
+        if DEBUG:
+            file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
+            log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
+            file.write(log)
+            file.close()
         return False
     try:
         citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")
@@ -593,7 +661,7 @@ def write_yinyong(paper,num,SID):
                     print(citation_url)
                 throttle.wait(citation_url)
                 citation = {}
-                citation = get_paper_record(citation_url, "SCIE")
+                citation = get_paper_record(citation_url, "NOUSE")
                 if citation is not None:
                     processed_url_num += 1
                     gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
@@ -623,19 +691,27 @@ def get_wos_sid():
         html_emt = etree.HTML(html)
         SID = html_emt.xpath("//input[@name='SID']/@value")[0]
     except Exception as e:
-        tkinter.messagebox.showinfo("错误","获取SID错误")
-        return None
+        #tkinter.messagebox.showinfo("错误","获取SID错误")
+        print("获取SID错误")
+        time.sleep(30)
+        return get_wos_sid()
 
     return  SID
 
 def scrape_sci(seed_url):
 
-    global original_papers_lst, wos_cited_papers
+    global original_papers_lst, wos_cited_papers, report_save_path
     try:
         # 如果WOS文件不为空
-        if (len(gui.wos_file_path.get())>1):
+        if (len(gui.wos_file_path.get())>1 or len(gui.ssci_file_path.get())>1 ):
 
-            original_papers_lst = get_wos_originals(path=gui.wos_file_path.get())
+            report_save_path = str(gui.path_input.get()).strip()
+            if (len(gui.wos_file_path.get())>1):
+                paper_lst= get_sci_originals(path=gui.wos_file_path.get())
+                original_papers_lst.extend(paper_lst)
+            if (len(gui.ssci_file_path.get())>1):
+                paper_lst = get_ssci_originals(path=gui.ssci_file_path.get())
+                original_papers_lst.extend(paper_lst)
             if gui.yinyong_opt.get() == True and wos_cited_papers != 0:
                 SID = get_wos_sid()
                 i = 1  # 引用报告中文献序号
@@ -685,8 +761,11 @@ def write_report(document):
     ei_paper_num = 0
     sci_paper_num = 0
     ei_sci_paper_num = 0
-    ziyin_num = 0
-    tayin_num = 0
+    ssci_paper_num = 0
+    sci_ziyin_num = 0
+    sci_tayin_num = 0
+    ssci_ziyin_num = 0
+    ssci_tayin_num = 0
 
     for paper in original_papers_lst:
         if paper['shoulu'] == 'EI':
@@ -695,11 +774,18 @@ def write_report(document):
             sci_paper_num += 1
         if paper['shoulu'] =='SCIE, EI':
             ei_sci_paper_num += 1
+        if paper['shoulu'] == 'SSCI':
+            ssci_paper_num += 1
 
-        if paper.get('ziyin','000') !='000':
-            ziyin_num += int(paper['ziyin'])
-        if paper.get('tayin','000') != '000':
-            tayin_num += int(paper['tayin'])
+        if (paper['shoulu'] == 'SCIE'or  paper['shoulu'] =='SCIE, EI') and paper.get('ziyin','000') !='000':
+            sci_ziyin_num += int(paper['ziyin'])
+        if (paper['shoulu'] == 'SCIE'or  paper['shoulu'] =='SCIE, EI') and paper.get('tayin','000') != '000':
+            sci_tayin_num += int(paper['tayin'])
+
+        if paper['shoulu'] == 'SSCI' and paper.get('ziyin','000') !='000':
+            ssci_ziyin_num += int(paper['ziyin'])
+        if paper['shoulu'] == 'SSCI' and paper.get('tayin','000') != '000':
+            ssci_tayin_num += int(paper['tayin'])
 
     style = document.styles.add_style("indent", WD_STYLE_TYPE.PARAGRAPH)
     style.paragraph_format.left_indent = docx.shared.Cm(0.5)
@@ -740,6 +826,9 @@ def write_report(document):
     if (len(gui.ei_file_path.get()) > 1):
         document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版）" % i, style="indent")
         i += 1
+    if (len(gui.ssci_file_path.get()) > 1):
+        document.add_paragraph("%d. 美国《社会科学引文索引》(SSCI，网络版）" % i, style="indent")
+        i += 1
 
     p = document.add_paragraph("")
     run = p.add_run("检索结果")
@@ -752,14 +841,29 @@ def write_report(document):
         i += 1
         p.add_run(" %d " % sci_paper_num).underline = True
         p.add_run("篇")
-        if ziyin_num or tayin_num:
+        if sci_ziyin_num or sci_tayin_num:
             p.add_run("，在《Web of Science 核心合集：引文索引》中累计被引用")
-            p.add_run(" %d " % (ziyin_num+tayin_num)).underline = True
+            p.add_run(" %d " % (sci_ziyin_num+sci_tayin_num)).underline = True
             p.add_run("次（其中他人引用")
-            p.add_run(" %d " % tayin_num).underline = True
+            p.add_run(" %d " % sci_tayin_num).underline = True
             p.add_run("次，自引")
-            p.add_run(" %d " % ziyin_num).underline = True
+            p.add_run(" %d " % sci_ziyin_num).underline = True
             p.add_run("次。注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。")
+
+    if ssci_paper_num !=0:
+        p = document.add_paragraph("%d.  美国《社会科学引文索引》(SSCI，网络版)收录" % i)
+        i += 1
+        p.add_run(" %d " % ssci_paper_num).underline = True
+        p.add_run("篇")
+        if ssci_ziyin_num or ssci_tayin_num:
+            p.add_run("，在《Web of Science 核心合集：引文索引》中累计被引用")
+            p.add_run(" %d " % (ssci_ziyin_num+ssci_tayin_num)).underline = True
+            p.add_run("次（其中他人引用")
+            p.add_run(" %d " % ssci_tayin_num).underline = True
+            p.add_run("次，自引")
+            p.add_run(" %d " % ssci_ziyin_num).underline = True
+            p.add_run("次。注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。")
+
     if ei_paper_num !=0:
         p = document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版)收录" %i)
         p.add_run(" %d " % ei_paper_num).underline = True
@@ -776,6 +880,8 @@ def write_report(document):
         p = document.add_paragraph("%d. JCR收录期刊种" %i)
         jcr_paragraph_position = len(document.paragraphs)-1
 
+    if (gui.fenqu_opt.get() == True):
+        document.add_paragraph("%d. 中科院SCI分区表（网络版）收录  种期刊" % i)
 
     document.add_paragraph("")
     document.add_paragraph("（检索结果详见附件）")
@@ -904,7 +1010,7 @@ def scrape_fenqu(document):
 
         document.add_paragraph("%d. 刊名：" % i)
         document.add_paragraph("  ISSN：%s" % issn)
-        document.add_paragraph("  2017版分区情况")
+        document.add_paragraph("  2018版分区情况")
 
         table = document.add_table(rows=3, cols=4)
         table.style = "Table Grid"
@@ -1076,7 +1182,6 @@ def report_overview(document):
         document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
 
 
-
 class Spider_gui(object):
 
     def select_path(self):
@@ -1091,6 +1196,9 @@ class Spider_gui(object):
         wos_file = tkinter.filedialog.askopenfilename()
         self.wos_file_path.set(wos_file)
 
+    def select_ssci_path(self):
+        ssci_file = tkinter.filedialog.askopenfilename()
+        self.ssci_file_path.set(ssci_file)
     def __init__(self):
         self.window = tkinter.Tk()
 
@@ -1104,6 +1212,7 @@ class Spider_gui(object):
         self.progress_value = tkinter.IntVar()
         self.ei_file_path = tkinter.StringVar()
         self.wos_file_path = tkinter.StringVar()
+        self.ssci_file_path = tkinter.StringVar()
 
         self.jcr_opt.set(False)
         self.yinyong_opt.set(False)
@@ -1115,6 +1224,10 @@ class Spider_gui(object):
         self.wos_label = tkinter.Label(self.window, text="WOS文件:")
         self.wos_input = tkinter.Entry(self.window, width=50, textvariable=self.wos_file_path)
         self.wos_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_wos_path)
+
+        self.ssci_label = tkinter.Label(self.window, text="SSCI文件:")
+        self.ssci_input = tkinter.Entry(self.window, width=50, textvariable=self.ssci_file_path)
+        self.ssci_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_ssci_path)
 
         self.path_label = tkinter.Label(self.window, text="保存路径：")
         self.path_input = tkinter.Entry(self.window, width=50, textvariable=self.path)
@@ -1150,31 +1263,35 @@ class Spider_gui(object):
         self.wos_input.grid(row=1, column=2)
         self.wos_path_button.grid(row=1, column=3)
 
-        self.path_label.grid(row=2, column=1)
-        self.path_input.grid(row=2, column=2)
-        self.path_button.grid(row=2, column=3)
+        self.ssci_label.grid(row=2, column=1)
+        self.ssci_input.grid(row=2, column=2)
+        self.ssci_path_button.grid(row=2, column=3)
 
-        self.ei_path_label.grid(row=3, column=1)
-        self.ei_path_input.grid(row=3, column=2)
-        self.ei_path_button.grid(row=3, column=3)
+        self.path_label.grid(row=3, column=1)
+        self.path_input.grid(row=3, column=2)
+        self.path_button.grid(row=3, column=3)
 
-        self.bianhao_label.grid(row=4, column=1)
-        self.bianhao_input.grid(row=4, column=2, sticky="w")
-        self.JCR_checkbutton.grid(row=4, column=2 )
-        self.fenqu_checkbutton.grid(row=4, column=2, sticky='e')
+        self.ei_path_label.grid(row=4, column=1)
+        self.ei_path_input.grid(row=4, column=2)
+        self.ei_path_button.grid(row=4, column=3)
+
+        self.bianhao_label.grid(row=5, column=1)
+        self.bianhao_input.grid(row=5, column=2, sticky="w")
+        self.JCR_checkbutton.grid(row=5, column=2 )
+        self.fenqu_checkbutton.grid(row=5, column=2, sticky='e')
 
 
-        self.yinyong_checkbutton.grid(row=5, column=2, sticky="w")
-        self.contribution_checkbutton.grid(row=5,column=2)
-        self.hcp_checkbutton.grid(row=5,column=2, padx=15,sticky="e")
+        self.yinyong_checkbutton.grid(row=6, column=2, sticky="w")
+        self.contribution_checkbutton.grid(row=6,column=2)
+        self.hcp_checkbutton.grid(row=6,column=2, padx=15,sticky="e")
 
-        self.author_label.grid(row=6, column=1)
-        self.author_input.grid(row=6,column=2, stick="w")
-        self.author_tip.grid(row=6,column=3,stick="w")
+        self.author_label.grid(row=7, column=1)
+        self.author_input.grid(row=7,column=2, stick="w")
+        self.author_tip.grid(row=7,column=3,stick="w")
 
-        self.progress_bar.grid(row=7,column=2)
-        self.processing_info.grid(row=8, column=2)
-        self.bgn_button.grid(row=9, column=2, sticky="e")
+        self.progress_bar.grid(row=8,column=2)
+        self.processing_info.grid(row=9, column=2)
+        self.bgn_button.grid(row=10, column=2, sticky="e")
 
     def begin_crawl(self):
 

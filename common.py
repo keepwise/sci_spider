@@ -111,25 +111,21 @@ def download(url, headers, proxy, num_retries, data=None):
             code = response.code
 
     except urllib.error.URLError as e:
-        print('Download error: %s' % e.reason)
-        html = ''
-        if hasattr(e, 'code'):
-            code = e.code
-            if num_retries > 0 and 500 <= code < 600:
-                # retry 5XX HTTP errors
-                return download(url, headers, proxy, num_retries - 1, data)
-        else:
-            code = None
+        print('Download error: urlerror')
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
     except urllib.error.HTTPError as e:
-        if  num_retries>0:
-            return download(url, headers, proxy, num_retries - 1, data)
-        print("Download error: %s" % e.reason)
+        print("Download error: httperror")
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
     except socket.timeout as e:
-        if  num_retries>0:
-            return download(url, headers, proxy, num_retries - 1, data)
-    finally:
-        pass
-
+        print("Download error: timeout ")
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
+    except Exception as e:
+        print("Download error catch all")
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
     return html
 
 
