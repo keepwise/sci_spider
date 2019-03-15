@@ -411,7 +411,8 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
             full_name = full_name.replace(", ","[,\s]*")
             full_name = full_name.replace("-","[-\s]*")
             full_name = full_name.replace(" ","[,\s]*")
-
+            full_name = full_name.replace("(","\(")
+            full_name = full_name.replace(")", "\)")
 
             if len(full_name)>1 and re.search(full_name,citation_authors,re.M| re.I) is not None:
 
