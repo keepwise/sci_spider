@@ -677,7 +677,7 @@ def write_yinyong(paper,num,SID):
 
 def get_wos_sid():
     global headers
-    url = "http://webofknowledge.com/?DestApp=WOS&editions=SCI"
+    url = "http://apps.webofknowledge.com/?DestApp=WOS&editions=SCI"
     request = urllib.request.Request(url=url, headers=headers)
     opener = urllib.request.build_opener()
     SID = ""
@@ -909,6 +909,7 @@ def ei_shoulu():
     ei_file = ei_file.strip()
     ei_papers = pd.read_excel(ei_file,0)
     i = 0
+
     while i<ei_papers.shape[0]:
         title = ei_papers['Title'][i]
         ei_paper = {}
@@ -923,6 +924,8 @@ def ei_shoulu():
             ei_paper['title'] = title
             ei_paper['author'] = ei_papers['Author'][i]
             ei_paper['source'] = ei_papers['Source'][i]
+
+            ei_paper['source'] = str(ei_paper['source'])
             if ei_papers.get("Volume") is not None:
                 ei_paper['source'] += " 卷:"+str(ei_papers['Volume'][i]).replace("nan","")
             if ei_papers.get("Pages") is not None:
