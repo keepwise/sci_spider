@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 import common
 from docx import Document
+
 import docx
 from docx.enum.text import WD_COLOR_INDEX
 from docx.enum.style import WD_STYLE_TYPE
@@ -23,6 +24,7 @@ import pandas as pd
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import time
 
+
 headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Encoding": "gzip, deflate",
@@ -31,12 +33,12 @@ headers = {
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
     "content-type": "text/html;charset=UTF-8",
-    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:63.0) Gecko/20100101 Firefox/63.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:63.0) Gecko/20100101 Firefox/63.0"
 }
 
 url_crawled_num = 0  #爬取的原文数量
-num_retries = 5   #爬取链接时尝试的次数
-delay = 4   #请求间延迟的时间
+num_retries = 2   #爬取链接时尝试的次数
+delay = 5   #请求间延迟的时间
 proxy = None
 wroten_original_num = 0  #已经写入的被引文献数量
 document = Document()
@@ -54,25 +56,15 @@ jcr_paragraph_position = 0
 wos_cited_papers = 0  #SCI原文中，引用次数不为0的论文数量
 processed_url_num = 0 #处理的链接数量
 
-report_save_path = ""
-
-citation_start_year = '' #2015年后的引用情况
+citation_start_year = '2015' #2015年后的引用情况
 cite_start_year_total = 0 #当前文章自xxx年后的总引用数
 citation_start_year_ziyin = 0 #xxxx年后的自引总数
-citation_start_year_tayin = 0 #xxxx年后的他引总数                                                                  
+citation_start_year_tayin = 0 #xxxx年后的他引总数
 
-DEBUG = False
-
+DEBUG = True
 
 def get_papers_queue(seed_url):
-    '''该函数用于获取文章队列，交给爬虫爬取。
 
-    在get_paper_record被调用，用户获取引文列表。
-
-    :param seed_url:
-    :return:
-    返回一个url队列
-    '''
     global url_crawled_num, num_retries, delay, proxy,headers
 
 
@@ -102,51 +94,27 @@ def get_papers_queue(seed_url):
         return url_queue
 
 def get_paper_record(url,database):
-    ''' 获取引文的著录信息，如作者、标题、出版年等
-
-    :param url:
-    文章的Url
-    :param database:
-    SCI或SSCI，用于标记文章所属数据库
-    :return:
-    '''
-    global url_crawled_num, num_retries, delay, proxy, headers, report_save_path
+    global url_crawled_num, num_retries, delay, proxy, headers
 
     paper = {}
     html = common.download(url=url, proxy=None, num_retries=num_retries,headers=headers)
-
-    if  html is None or html == "":   #尝试多次后无法采集页面内容
-        return None    #返回，进行下一条采集
-
-
     html = html.encode(encoding='utf-8')
     html = html.decode("utf-8")
 
-
+    #file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\test.html", "w", encoding="utf-8")
+    #file.write(html)
     html_emt = etree.HTML(html)
-    #如果html为空，说明获取页面信息失败
-    if html_emt is None:
-        if DEBUG:
-            file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
-            log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
-            file.write(log)
-            file.close()
-        return None
     try:
-        if DEBUG:
-            file = open(r"C:\Users\wxs\Desktop\record.html",mode='w+',encoding="utf-8")
 
-            file.write(html)
-            file.close()
         title = html_emt.xpath("//div[@class='title']/value/text()")[0]
         #authors = html_emt.xpath( "//div[@class='l-content']//p[@class='FR_field']/span[contains(text(),'By:') or contains(text(),'作者:')]/following-sibling::a/text()|//div[@class='l-content']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
-        authors = html_emt.xpath("//div[@class='l-content ']//div[@class='block-record-info']//p[@class='FR_field']/span[text()='By:' or text()='作者:']/following-sibling::a/text()|//div[@class='l-content ']//div[@class='block-record-info']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
+        authors = html_emt.xpath("//div[@class='l-content']//p[@class='FR_field']/span[text()='By:' or text()='作者:']/following-sibling::a/text()|//div[@class='l-content']//p[@class='FR_field']/span[@id='more_authors_authors_txt_label']/a/text()")
         fullNames = ""
         print(authors)
 
         for author in authors:
             #fullName = html_emt.xpath('//p[@class="FR_field"]/span[contains(text(),"By:") or contains(text(),"作者:")]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content"]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
-            fullName = html_emt.xpath( '//p[@class="FR_field"]/span[text()="By:" or text()="作者:"]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content "]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
+            fullName = html_emt.xpath( '//p[@class="FR_field"]/span[text()="By:" or text()="作者:"]/following-sibling::a[text()="%s"]/following-sibling::text()|//div[@class="l-content"]//p[@class="FR_field"]/span[@id="more_authors_authors_txt_label"]/a[text()="%s"]/following-sibling::text()' % (author, author))[0]
             if fullName.find(";") != -1:
 
                 fullNames = fullNames + author + fullName
@@ -169,12 +137,12 @@ def get_paper_record(url,database):
                 source += str(ss).replace("\n", "")
             i = i + 1
 
-        matchObj = re.search("出版年.*?\d{4}", source, re.M| re.I)
+        matchObj = re.search("\s\d{4}\s", source, re.M| re.I)
 
         pubYear = ""
         if matchObj:
-            pubYear = matchObj.group().strip()
-            pubYear = pubYear[-4:]
+            pubYear = matchObj.group(0).strip()
+
         citing_url = html_emt.xpath("//a[@class='snowplow-citation-network-times-cited-count-link']/@href")
         if len(citing_url):
             citing_url = citing_url[0]
@@ -229,23 +197,26 @@ def get_paper_record(url,database):
         paper['wos_no'] = wos_no
         paper['issn']  = issn
         paper['eissn'] = eissn
-        paper['pubYear'] = pubYear                          
+        paper['pubYear'] = pubYear
         #自引次数
         paper['ziyin'] = 0
         #他引次数
         paper['tayin'] = 0
+        #给定起始年后的自引次数
+        paper['year_ziyin'] = 0
+        # 给定起始年后的他引次数
+        paper['year_tayin'] = 0
+
         paper['shoulu'] = database
     except Exception as e:
             print("获取文章详细信息失败,url: %s " % url)
-            #return get_paper_record(url,database)
-
-            file = open(report_save_path+ "\\log.txt", "a", encoding="utf-8")
-            log = "获取文章详细信息失败:"
-            log += url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
-            file.write(log)
-            file.close()
-            return  None
+            print("tite: %s" %  title)
+            print("author: %s " % fullNames)
+            print("source: %s" % source)
+            print("错误：%s" % str(e))
+            tkinter.messagebox.showinfo("错误","获取文章详细信息失败 %s" % url)
     return paper
+
 
 def write_shoulu(document):
 
@@ -323,21 +294,9 @@ def write_shoulu(document):
         p.add_run("收录情况: ", style="label")
         p.add_run(paper['shoulu'])
 
-        document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+"_baogao.docx")
+        document.save(str(gui.path_input.get()).strip()+"\\"+str(gui.bianhao_input.get()).strip()+"_shoulu.docx")
 
 def write_word(record, record_type,cite_total=0, cur_cite=0):
-    '''该函数用于将文章信息写入引用报告文件，该函数被write_yinyong调用
-
-    :param record:
-    文章信息
-    :param record_type:
-    注明是原文还是引文
-    :param cite_total:
-    当前文章的总引用次数
-    :param cur_cite:
-    当前引文序号
-    :return:
-    '''
     #record_type注明是原文还是引文
 
     global document, wroten_original_num, original_papers_lst, cur_original_paper_no
@@ -404,12 +363,11 @@ def write_word(record, record_type,cite_total=0, cur_cite=0):
         ziyin_tayin(record,cite_total,cur_cite)
 
     #print(str(gui.directory_input.get()).strip())
-    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+"_yinyong.docx")
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip()+".docx")
 
 def ziyin_tayin(citation,cite_total=0, cur_cite=0):
-
     '''区分自引他引，并写入word文档'''
-    global original_papers_lst,cur_original_paper_no, cite_start_year_total, citation_start_year
+    global original_papers_lst,cur_original_paper_no,cite_start_year_total
 
     original_authors = original_papers_lst[cur_original_paper_no-1]['author']
     original_authors_lst = original_authors.split(";")
@@ -430,8 +388,8 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     for full_author in original_authors_lst:
         # 如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"匹配
         full_author_pattern = full_author.replace("-","[-\s]?")
-        full_author_pattern = full_author_pattern.replace(", ","[,\s]*")
-        full_author_pattern = full_author_pattern.replace(" ","[,\s]*")
+        full_author_pattern = full_author_pattern.replace(", ","[,\s]+")
+        full_author_pattern = full_author_pattern.replace(" ","\s+")
         full_author_pattern = full_author_pattern.replace("(","\(")
         full_author_pattern = full_author_pattern.replace(")", "\)")
 
@@ -446,7 +404,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 
             original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
             if citation['pubYear']>= citation_start_year:
-                original_papers_lst[cur_original_paper_no - 1]['year_ziyin'] += 1                                            
+                original_papers_lst[cur_original_paper_no - 1]['year_ziyin'] += 1
             break
     else:
         #如果[0]="Wang, XY (Wang, Xinyu)"   [1]="Fu, MY (Fu, Mengyin)" [2] = "Ma, HB (Ma, Hongbin)"不匹配
@@ -459,11 +417,10 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
             else:
                 full_name = str(full_author).strip()
 
-            full_name = full_name.replace(", ","[,\s]*")
-            full_name = full_name.replace("-","[-\s]*")
-            full_name = full_name.replace(" ","[,\s]*")
-            full_name = full_name.replace("(","\(")
-            full_name = full_name.replace(")", "\)")
+            full_name = full_name.replace(", ","[,\s]+")
+            full_name = full_name.replace("-","[-\s]?")
+            full_name = full_name.replace(" ","\s+")
+
 
             if len(full_name)>1 and re.search(full_name,citation_authors,re.M| re.I) is not None:
 
@@ -475,7 +432,8 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                 p.add_run(citation['author'][(author_start + author_len):])
 
                 original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
-                if citation['pubYear']>= citation_start_year:
+
+                if citation['pubYear'] >= citation_start_year:
                     original_papers_lst[cur_original_paper_no - 1]['year_ziyin'] += 1
                 break
             else:
@@ -491,7 +449,8 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
                         p.add_run(citation['author'][(author_start + author_len):])
 
                         original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
-                        if citation['pubYear']>= citation_start_year:
+
+                        if citation['pubYear'] >= citation_start_year:
                             original_papers_lst[cur_original_paper_no - 1]['year_ziyin'] += 1
                         break
         else:
@@ -516,8 +475,8 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
 
                         if basic_matched_num>1:
                             original_papers_lst[cur_original_paper_no-1]['ziyin'] += 1
-                            if citation['pubYear']>= citation_start_year:
-                                original_papers_lst[cur_original_paper_no - 1]['year_ziyin'] += 1                                             
+                            if citation['pubYear'] >= citation_start_year:
+                                original_papers_lst[cur_original_paper_no - 1]['year_ziyin'] += 1
                             break
             else:
                 p.add_run(citation['author'])
@@ -531,7 +490,7 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
     p.add_run(citation['wos_no'])
 
     original_papers_lst[cur_original_paper_no-1]['tayin'] = cite_total - original_papers_lst[cur_original_paper_no-1]['ziyin']
-    original_papers_lst[cur_original_paper_no-1]['year_tayin'] = cite_start_year_total - original_papers_lst[cur_original_paper_no-1]['year_ziyin']                                                                                                                                           
+    original_papers_lst[cur_original_paper_no-1]['year_tayin'] = cite_start_year_total - original_papers_lst[cur_original_paper_no-1]['year_ziyin']
     yinyong_paragraph_position = original_papers_lst[cur_original_paper_no-1]['yinyong_paragraph_position']
 
     p = document.paragraphs[yinyong_paragraph_position]
@@ -551,15 +510,9 @@ def ziyin_tayin(citation,cite_total=0, cur_cite=0):
         p.add_run("他引").bold = True
         p.add_run(" %d " % original_papers_lst[cur_original_paper_no - 1]['year_tayin'], style="sci_heading")
         p.add_run("篇  )").bold = True
-
-
-def get_sci_originals(path):
+def get_wos_originals(path):
     global  wos_cited_papers
-    csv_path = str(gui.wos_file_path.get()).encode(encoding="utf-8")
-    csv_path = csv_path.decode("utf-8")
-    f = open(csv_path,encoding="utf-8")
-    papers_df = pd.read_csv(f,sep="\t",index_col=False)
-    f.close()
+    papers_df = pd.read_csv(gui.wos_file_path.get(),sep="\t",index_col=False)
     original_total = papers_df.shape[0]
     papers_lst = []
 
@@ -600,72 +553,8 @@ def get_sci_originals(path):
         paper['shoulu'] = "SCIE"
         paper['year_tayin'] = 0
         paper['year_ziyin'] = 0
-        
-        paper['pubYear'] = py
-        
-
-        #高被引
-        if papers_df.get("HC") is not None:
-            paper['hc'] = str(papers_df['HC'][i])
-        if DEBUG == True:
-            print(paper)
-
-        i += 1
-        papers_lst.append(paper)
-
-    return papers_lst
-
-def get_ssci_originals(path):
-    global  wos_cited_papers
-    csv_path = str(gui.ssci_file_path.get()).encode(encoding="utf-8")
-    csv_path = csv_path.decode("utf-8")
-    f = open(csv_path,encoding="utf-8")
-    papers_df = pd.read_csv(f,sep="\t",index_col=False)
-    f.close()
-    original_total = papers_df.shape[0]
-    papers_lst = []
-
-    if DEBUG == True:
-        print(papers_df.head())
-    i = 0
-    while i<papers_df.shape[0]:
-        paper = {}
-        paper['title'] = papers_df['TI'][i]
-
-        au = str(papers_df['AU'][i]).split(";")
-        af = str(papers_df['AF'][i]).split(";")
-
-        j = 0
-        paper['author'] = ""
-        for author in au:
-            paper['author'] += str(author)+" ("+str(af[j])+");"
-            j += 1
-
-        paper['full_author'] = papers_df['AF'][i]
-        so =  str(papers_df['SO'][i])
-        vl =  str(papers_df['VL'][i])
-        bp =  str(papers_df['BP'][i])
-        ep = str(papers_df['EP'][i])
-        py = str(papers_df['PY'][i])
-        paper['source'] = so + " 卷:" + vl + " 页:" + bp + "-" + ep + " 出版年:" + py
-        paper['wos_cited_num'] = str(papers_df['TC'][i])
-        if paper['wos_cited_num'] != '0':
-            wos_cited_papers += 1
-        paper['ziyin'] = 0
-        paper['tayin'] = 0
-        paper['wos_no'] = str(papers_df['UT'][i])
-        paper['issn'] = str(papers_df['SN'][i])
-        paper['eissn'] = str(papers_df['EI'][i])
-
-        paper['reprint_author'] = str(papers_df['RP'][i])
-        paper['address'] = str(papers_df['C1'][i])
-        paper['shoulu'] = "SSCI"
-
-        paper['year_tayin'] = 0
-        paper['year_ziyin'] = 0
 
         paper['pubYear'] = py
-
         #高被引
         if papers_df.get("HC") is not None:
             paper['hc'] = str(papers_df['HC'][i])
@@ -678,27 +567,11 @@ def get_ssci_originals(path):
     return papers_lst
 
 def write_yinyong(paper,num,SID):
-    '''获取文章的引用页面链接，建立引文队列，然后爬取队列内容，并写入word
-
-    :param paper:
-    需要检索引用的原文
-    :param num:
-    当期要处理的报告原文序号
-    :param SID:
-    :return:
-    如果引文爬取并写入word成功，返回True;
-    否则返回False
-    '''
     global url_crawled_num, num_retries, delay, proxy, headers, processed_url_num,cur_original_paper_no, cite_start_year_total
     cur_original_paper_no = num
     wos = paper['wos_no']
     time_now = datetime.now()
     cur_year = time_now.year
-    database = ''
-    if paper['shoulu'] == 'SCIE':
-        database = 'SCI'
-    if paper['shoulu'] == 'SSCI':
-        database = 'SSCI'
     url="http://apps.webofknowledge.com/WOS_GeneralSearch.do?fieldCount=1&action=search&product=WOS&search_mode=GeneralSearch&max_field_count=25&max_field_notice="+\
          "%E6%B3%A8%E6%84%8F%3A+%E6%97%A0%E6%B3%95%E6%B7%BB%E5%8A%A0%E5%8F%A6%E4%B8%80%E5%AD%97%E6%AE%B5%E3%80%82&input_invalid_notice="+\
          "%E6%A3%80%E7%B4%A2%E9%94%99%E8%AF%AF%3A+%E8%AF%B7%E8%BE%93%E5%85%A5%E6%A3%80%E7%B4%A2%E8%AF%8D%E3%80%82&exp_notice="+\
@@ -707,7 +580,7 @@ def write_yinyong(paper,num,SID):
          "%A4%BA%E7%9A%84%E5%AD%97%E6%AE%B5%E5%BF%85%E9%A1%BB%E8%87%B3%E5%B0%91%E4%B8%8E%E4%B8%80%E4%B8%AA%E5%85%B6%E4%BB%96%E6%A3%80%E7%B4%A2%E5%AD%97%E6%AE%B5%E7%9B%B8%E7"+\
          "%BB%84%E9%85%8D%E3%80%82&sa_params=WOS%7C%7C"+SID+"%7Chttp%3A%2F%2Fapps.webofknowledge.com%7C%27&formUpdated=true&value%28input1%29="+paper['wos_no']+"&value"+\
          "%28select1%29=UT&x=46&y=19&value%28hidInput1%29=&limitStatus=expanded&ss_lemmatization=On&ss_spellchecking=Suggest&SinceLastVisit_UTC=&SinceLastVisit_DATE=&range"+\
-         "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions="+database+"&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
+         "=ALL&period=Year+Range&startYear=1900&endYear="+str(cur_year)+"&editions=SCI&update_back2search_link_param=yes&ssStatus=display%3Anone&ss_showsuggestions=ON&"+\
         "ss_numDefaultGeneralSearchFields=1&ss_query_language=&rs_sort_by=PY.D%3BLD.D%3BSO.A%3BVL.D%3BPG.A%3BAU.A&SID="+SID
 
     throttle = common.Throttle(delay)
@@ -717,16 +590,12 @@ def write_yinyong(paper,num,SID):
     html = html.encode(encoding='utf-8')
     html = html.decode("utf-8")
 
-
-
+    if DEBUG :
+        f = open(r"C:\Users\wxs\Desktop\tt.html","w",encoding="utf-8")
+        f.write(html)
+        f.close()
     html_emt = etree.HTML(html)
-    if html_emt is None:
-        if DEBUG:
-            file = open(r"C:\Users\wangxiaoshan\Desktop\wxs_py\log.txt", "a", encoding="utf-8")
-            log = url + "    " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n"
-            file.write(log)
-            file.close()
-        return False
+
     try:
         citing_url = html_emt.xpath("//a[@class='snowplow-times-cited-link']/@href")
         if len(citing_url)<1:
@@ -741,9 +610,11 @@ def write_yinyong(paper,num,SID):
 
         if citing_papers_queue is not None:
             write_word(paper, record_type='original')
-            cite_total = len(citing_papers_queue)
+            cite_total = len(citing_papers_queue)   #当前文章的总引用次数
             cur_cite = 1
             cite_start_year_total = 0
+
+
             while citing_papers_queue:
                 citation_url = citing_papers_queue.popleft()
                 citation_url = common.normalize(seed_url, citation_url)
@@ -752,13 +623,12 @@ def write_yinyong(paper,num,SID):
                 throttle.wait(citation_url)
                 citation = {}
                 citation = get_paper_record(citation_url, "SCIE")
-                if citation is not None:
-                    if citation['pubYear'] >= citation_start_year:
-                        cite_start_year_total += 1                          
-                    processed_url_num += 1
-                    gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
-                    write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
-                    cur_cite += 1
+                if citation['pubYear'] >= citation_start_year:
+                    cite_start_year_total += 1
+                processed_url_num += 1
+                gui.processing_info.insert(0, "正在处理 %d: %s" % (processed_url_num, citation_url))
+                write_word(citation, record_type='citation', cite_total=cite_total, cur_cite=cur_cite)
+                cur_cite += 1
             return True
         else:
             return False
@@ -768,61 +638,41 @@ def write_yinyong(paper,num,SID):
 
 def get_wos_sid():
     global headers
-    url = "http://apps.webofknowledge.com/?DestApp=WOS&editions=SCI"
-
+    url = "http://webofknowledge.com/?DestApp=WOS&editions=SCI"
     request = urllib.request.Request(url=url, headers=headers)
-
     opener = urllib.request.build_opener()
     SID = ""
     try:
         response = opener.open(request)
         html = response.read().decode("UTF-8")
         #html = html.decode("utf-8")
-
         if DEBUG:
             file = open(r"C:\Users\wxs\Desktop\test.html", "w", encoding="utf-8")
             file.write(html)
-            file.close()
 
         html_emt = etree.HTML(html)
         SID = html_emt.xpath("//input[@name='SID']/@value")[0]
     except Exception as e:
-        #tkinter.messagebox.showinfo("错误","获取SID错误")
-        print("获取SID错误")
-        time.sleep(30)
-        return get_wos_sid()
+        tkinter.messagebox.showinfo("错误","获取SID错误")
+        return None
 
     return  SID
 
 def scrape_sci(seed_url):
-    '''这个函数是该程序的主体函数。
 
-    程序的主要逻辑在该函数实现。
-
-    :param seed_url:
-    :return:
-    '''
-    global original_papers_lst, wos_cited_papers, report_save_path
-
-
+    global original_papers_lst, wos_cited_papers
     try:
         # 如果WOS文件不为空
-        if (len(gui.wos_file_path.get())>1 or len(gui.ssci_file_path.get())>1 ):
+        if (len(gui.wos_file_path.get())>1):
 
-            report_save_path = str(gui.path_input.get()).strip()
-            if (len(gui.wos_file_path.get())>1):
-                paper_lst= get_sci_originals(path=gui.wos_file_path.get())
-                original_papers_lst.extend(paper_lst)
-            if (len(gui.ssci_file_path.get())>1):
-                paper_lst = get_ssci_originals(path=gui.ssci_file_path.get())
-                original_papers_lst.extend(paper_lst)
+            original_papers_lst = get_wos_originals(path=gui.wos_file_path.get())
             if gui.yinyong_opt.get() == True and wos_cited_papers != 0:
                 SID = get_wos_sid()
                 i = 1  # 引用报告中文献序号
-                j = 1 #当期要处理的报告原文序号
+                j = 1
                 for paper in original_papers_lst:
                     if paper['wos_cited_num'] != '0':
-                       if write_yinyong(paper, j,SID) == True:
+                       if write_yinyong(paper, i,SID) == True:
                            i += 1
                     gui.progress_value.set((j / wos_cited_papers) * 100)
                     j += 1
@@ -860,25 +710,15 @@ def scrape_sci(seed_url):
         gui.bgn_button['state'] = 'normal'
 
 def write_report(document):
-    '''写入报告的第一页
 
-    :param document:
-    :return:
-    '''
     global original_papers_lst, jcr_paragraph_position
     ei_paper_num = 0
     sci_paper_num = 0
     ei_sci_paper_num = 0
-    ssci_paper_num = 0
-    sci_ziyin_num = 0
-    sci_tayin_num = 0
-    ssci_ziyin_num = 0
-    ssci_tayin_num = 0
-    sci_year_ziyin_num = 0
-    sci_year_tayin_num = 0
-
-    ssci_year_ziyin_num = 0
-    ssci_year_tayin_num = 0
+    ziyin_num = 0
+    tayin_num = 0
+    year_ziyin_num = 0
+    year_tayin_num = 0
 
     for paper in original_papers_lst:
         if paper['shoulu'] == 'EI':
@@ -887,25 +727,16 @@ def write_report(document):
             sci_paper_num += 1
         if paper['shoulu'] =='SCIE, EI':
             ei_sci_paper_num += 1
-        if paper['shoulu'] == 'SSCI':
-            ssci_paper_num += 1
 
-        if (paper['shoulu'] == 'SCIE'or  paper['shoulu'] =='SCIE, EI') and paper.get('ziyin','000') !='000':
-            sci_ziyin_num += int(paper['ziyin'])
-            if paper.get('year_ziyin','000') !='000':
-                sci_year_ziyin_num += int(paper['year_ziyin'])
-        if (paper['shoulu'] == 'SCIE'or  paper['shoulu'] =='SCIE, EI') and paper.get('tayin','000') != '000':
-            sci_tayin_num += int(paper['tayin'])
-            if paper.get('year_tayin','000') != '000':
-                sci_year_tayin_num += int(paper['year_tayin'])
-        if paper['shoulu'] == 'SSCI' and paper.get('ziyin','000') !='000':
-            ssci_ziyin_num += int(paper['ziyin'])
-            if paper.get('year_ziyin','000') !='000':
-                ssci_year_ziyin_num += int(paper['year_ziyin'])
-        if paper['shoulu'] == 'SSCI' and paper.get('tayin','000') != '000':
-            ssci_tayin_num += int(paper['tayin'])
-            if paper.get('year_tayin','000') != '000':
-                ssci_year_tayin_num += int(paper['year_tayin'])
+        if paper.get('ziyin','000') !='000':
+            ziyin_num += int(paper['ziyin'])
+        if paper.get('tayin','000') != '000':
+            tayin_num += int(paper['tayin'])
+
+        if paper.get('year_ziyin','000') !='000':
+            year_ziyin_num += int(paper['year_ziyin'])
+        if paper.get('year_tayin','000') != '000':
+            year_tayin_num += int(paper['year_tayin'])
 
     style = document.styles.add_style("indent", WD_STYLE_TYPE.PARAGRAPH)
     style.paragraph_format.left_indent = docx.shared.Cm(0.5)
@@ -946,9 +777,6 @@ def write_report(document):
     if (len(gui.ei_file_path.get()) > 1):
         document.add_paragraph("%d. 美国《工程索引》(Ei Compendex，网络版）" % i, style="indent")
         i += 1
-    if (len(gui.ssci_file_path.get()) > 1):
-        document.add_paragraph("%d. 美国《社会科学引文索引》(SSCI，网络版）" % i, style="indent")
-        i += 1
 
     p = document.add_paragraph("")
     run = p.add_run("检索结果")
@@ -961,42 +789,20 @@ def write_report(document):
         i += 1
         p.add_run(" %d " % sci_paper_num).underline = True
         p.add_run("篇")
-        if sci_ziyin_num or sci_tayin_num:
+        if ziyin_num or tayin_num:
             p.add_run("，在《Web of Science 核心合集：引文索引》中累计被引用")
-            p.add_run(" %d " % (sci_ziyin_num+sci_tayin_num)).underline = True
+            p.add_run(" %d " % (ziyin_num+tayin_num)).underline = True
             p.add_run("次（其中他人引用")
-            p.add_run(" %d " % sci_tayin_num).underline = True
+            p.add_run(" %d " % tayin_num).underline = True
             p.add_run("次，自引")
-            p.add_run(" %d " % sci_ziyin_num).underline = True
+            p.add_run(" %d " % ziyin_num).underline = True
             p.add_run("次。")
         if citation_start_year != "":
             p.add_run("自"+citation_start_year+"年，他人引用：")
-
-            p.add_run(" %d " % sci_year_tayin_num).underline = True
+            p.add_run(" %d " % year_tayin_num).underline = True
             p.add_run("次，自引")
-            p.add_run(" %d " % sci_year_ziyin_num).underline = True
-            p.add_run("次。）")
-        p.add_run("注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。")
-    if ssci_paper_num !=0:
-        p = document.add_paragraph("%d.  美国《社会科学引文索引》(SSCI，网络版)收录" % i)
-        i += 1
-        p.add_run(" %d " % ssci_paper_num).underline = True
-        p.add_run("篇")
-        if ssci_ziyin_num or ssci_tayin_num:
-            p.add_run("，在《Web of Science 核心合集：引文索引》中累计被引用")
-            p.add_run(" %d " % (ssci_ziyin_num+ssci_tayin_num)).underline = True
-            p.add_run("次（其中他人引用")
-            p.add_run(" %d " % ssci_tayin_num).underline = True
-            p.add_run("次，自引")
-            p.add_run(" %d " % ssci_ziyin_num).underline = True
+            p.add_run(" %d " % year_ziyin_num).underline = True
             p.add_run("次。")
-        if citation_start_year != "":
-            p.add_run("自" + citation_start_year + "年，他人引用：")
-
-            p.add_run(" %d " % ssci_year_tayin_num).underline = True
-            p.add_run("次，自引")
-            p.add_run(" %d " % ssci_year_ziyin_num).underline = True
-            p.add_run("次。）")
         p.add_run("注：关于他引和自引的区分，本证明所采用的方法是：文献被除第一作者及合作者以外其他人的引用为他引）。")
 
     if ei_paper_num !=0:
@@ -1015,8 +821,6 @@ def write_report(document):
         p = document.add_paragraph("%d. JCR收录期刊种" %i)
         jcr_paragraph_position = len(document.paragraphs)-1
 
-    if (gui.fenqu_opt.get() == True):
-        document.add_paragraph("%d. 中科院SCI分区表（网络版）收录  种期刊" % i)
 
     document.add_paragraph("")
     document.add_paragraph("（检索结果详见附件）")
@@ -1043,7 +847,6 @@ def ei_shoulu():
     ei_file = ei_file.strip()
     ei_papers = pd.read_excel(ei_file,0)
     i = 0
-
     while i<ei_papers.shape[0]:
         title = ei_papers['Title'][i]
         ei_paper = {}
@@ -1058,14 +861,9 @@ def ei_shoulu():
             ei_paper['title'] = title
             ei_paper['author'] = ei_papers['Author'][i]
             ei_paper['source'] = ei_papers['Source'][i]
-
-            ei_paper['source'] = str(ei_paper['source'])
             if ei_papers.get("Volume") is not None:
                 ei_paper['source'] += " 卷:"+str(ei_papers['Volume'][i]).replace("nan","")
-            if ei_papers.get("Pages") is not None:
-                ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]).replace("nan","")
-
-            ei_paper['source'] += " 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
+            ei_paper['source'] += "     页:"+str(ei_papers['Pages'][i]).replace("nan","") +" 出版年:"+str(ei_papers['Publication year'][i])+" 文献类型:" + ei_papers['Document type'][i]
 
             if ei_papers.get("ISSN") is not None:
                 ei_paper['issn'] = ei_papers['ISSN'][i]
@@ -1073,14 +871,8 @@ def ei_shoulu():
                 ei_paper['issn'] = ""
             ei_paper['accession number'] = ei_papers['Accession number'][i]
             ei_paper['shoulu'] = "EI"
-            if ei_papers.get('Corresponding author') is not None:
-                ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
-            else:
-                ei_paper['reprint_author'] = ""
-            if ei_papers.get('Author affiliation') is not None:
-                ei_paper['address'] = ei_papers['Author affiliation'][i]
-            else:
-                ei_paper['address'] = ""
+            ei_paper['reprint_author'] = ei_papers['Corresponding author'][i]
+            ei_paper['address'] = ei_papers['Author affiliation'][i]
             original_papers_lst.append(ei_paper)
 
         i += 1
@@ -1116,7 +908,7 @@ def scrape_jcr(document):
                 jif = result[2]
                 document.add_paragraph("%d. 刊名：%s" %(i,title))
                 document.add_paragraph("ISSN: %s" % issn)
-                document.add_paragraph("2018年影响因子: %s" % jif)
+                document.add_paragraph("2017年影响因子: %s" % jif)
                 i += 1
                 jcr_shoulu_num += 1
 
@@ -1125,15 +917,12 @@ def scrape_jcr(document):
     except Exception as e:
         print("JCR收录出错:%s" % str(e))
     finally:
-        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
+        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
 def scrape_fenqu(document):
     global original_papers_lst
 
     document.add_page_break()
-    # 写入文件头
-    p = document.add_paragraph("")
-    p.add_run("附件三：").bold = True
     # 写入文件头
     p = document.add_paragraph("")
     run = p.add_run("中科院SCI分区表（网络版）收录情况")
@@ -1146,23 +935,32 @@ def scrape_fenqu(document):
         if paper['issn'] not in issn_lst:
             issn_lst.append(paper['issn'])
 
-    file = open(str(gui.path_input.get()).strip() + "\\"+"issn.txt", "w")
-
+    i = 1
     for issn in issn_lst:
-        issn = str(issn)
-        if "-" not in issn:
-            continue
-        file.write(issn+"\n")
-    file.close()
 
-    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
+        document.add_paragraph("%d. 刊名：" % i)
+        document.add_paragraph("  ISSN：%s" % issn)
+        document.add_paragraph("  2017版分区情况")
+
+        table = document.add_table(rows=3, cols=4)
+        table.style = "Table Grid"
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = ""
+        hdr_cells[1].text = "学科名称"
+        hdr_cells[2].text = "分区"
+        hdr_cells[3].text = "TOP期刊"
+
+
+        table.rows[1].cells[0].text = "小类"
+        table.rows[2].cells[0].text = "大类"
+
+        i += 1
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
 def report_overview(document):
     '''查询作者是否第一作者、通讯作者'''
     global original_papers_lst
 
-    wos_jiansuo = ""  #生成WOS的 入藏号检索式，保存下来，便于重复使用
-    ei_jiansuo = ""
     if len(document.paragraphs)>1:
         del document.paragraphs[:]
     author = gui.author_input.get()
@@ -1185,9 +983,6 @@ def report_overview(document):
 
         if gui.contribution_opt.get()==True:
             cols += 1
-            #是否高被引
-        if gui.hcp_opt.get() == True:
-            cols += 1
 
         table = document.add_table(rows=len(original_papers_lst)+1, cols=cols)
         table.style = "Table Grid"
@@ -1208,9 +1003,6 @@ def report_overview(document):
             icols += 1
         if gui.contribution_opt.get()==True:
             hdr_cells[icols+1].text = "贡献情况"
-            icols += 1
-        if gui.hcp_opt.get()==True:
-            hdr_cells[icols+1].text = "是否高被引"
 
         capital_pattern = re.compile("[A-Z]")
 
@@ -1221,13 +1013,11 @@ def report_overview(document):
         #生成正则"Mao[\s,]+E[\.-]?K[\.-]?"
         pattern_str = str(name_lst[0]).strip() + "[\s,]+" + capital_name
         paper_num = 1
-        #paper['author'] = str(paper['author'])
         for paper in original_papers_lst:
 
-            paper['author'] = str(paper['author'])
             icols = 0
             #匹配是否第一作者
-            matchObj = re.match(pattern_str,str(paper['author']), re.M)
+            matchObj = re.match(pattern_str,paper['author'], re.M)
             if matchObj:
                 paper['bool_first_author'] = True
             else:
@@ -1260,34 +1050,20 @@ def report_overview(document):
                         paper['bool_reprint_author'] = True
                     else:
                         paper['bool_reprint_author'] = False
-            else:
-                paper['bool_reprint_author'] = False
 
             paper_cells = table.rows[paper_num].cells
             paper_cells[icols].text = str(paper_num)
             icols += 1
             paper_cells[icols].text = paper['title']
 
-
+            if paper.get("wos_no",'not') != 'not':
+                paper_cells[icols].text += "\n" + paper['wos_no']
+            if paper.get('accession number','not') != 'not':
+                paper_cells[icols].text += "\n Accession Number:" + str(paper['accession number'])
             if paper.get("full_author","not") != "not":
                 paper_cells[icols].text += "\n 作者:" + str(paper['full_author'])
-            else:
-                paper_cells[icols].text += "\n 作者:" + str(paper['author'])
 
             paper_cells[icols].text += "\n 来源:" + paper['source']
-
-            if paper.get("wos_no", 'not') != 'not':
-                paper_cells[icols].text += "\n" + str(paper['wos_no'])
-                if wos_jiansuo == "":
-                    wos_jiansuo += "UT="+ str(paper['wos_no'])
-                else:
-                    wos_jiansuo += " OR UT="+str(paper['wos_no'])
-            if paper.get('accession number', 'not') != 'not':
-                paper_cells[icols].text += "\n Accession Number:" + str(paper['accession number'])
-                if ei_jiansuo =="":
-                    ei_jiansuo += str(paper['accession number']) + " WN AN"
-                else:
-                    ei_jiansuo +=" OR " + str(paper['accession number']) + " WN AN"
 
             icols += 1
             paper_cells[icols].text = paper['shoulu']
@@ -1309,16 +1085,7 @@ def report_overview(document):
                     paper_cells[icols].text +="通讯作者"
             paper_num += 1
 
-        if wos_jiansuo != "":
-            f = open(str(gui.path_input.get()).strip() + "\\"+ "wos_jiansuo.txt", "w")
-            f.write(wos_jiansuo)
-            f.close()
-        if ei_jiansuo != "":
-            f = open(str(gui.path_input.get()).strip() + "\\"+"ei_jiansuo.txt","w")
-            f.write(ei_jiansuo)
-            f.close()
-        document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_baogao.docx")
-
+    document.save(str(gui.path_input.get()).strip() + "\\" + str(gui.bianhao_input.get()).strip() + "_shoulu.docx")
 
 class Spider_gui(object):
 
@@ -1334,9 +1101,6 @@ class Spider_gui(object):
         wos_file = tkinter.filedialog.askopenfilename()
         self.wos_file_path.set(wos_file)
 
-    def select_ssci_path(self):
-        ssci_file = tkinter.filedialog.askopenfilename()
-        self.ssci_file_path.set(ssci_file)
     def __init__(self):
         self.window = tkinter.Tk()
 
@@ -1350,9 +1114,6 @@ class Spider_gui(object):
         self.progress_value = tkinter.IntVar()
         self.ei_file_path = tkinter.StringVar()
         self.wos_file_path = tkinter.StringVar()
-        self.ssci_file_path = tkinter.StringVar()
-
-
 
         self.jcr_opt.set(False)
         self.yinyong_opt.set(False)
@@ -1364,10 +1125,6 @@ class Spider_gui(object):
         self.wos_label = tkinter.Label(self.window, text="WOS文件:")
         self.wos_input = tkinter.Entry(self.window, width=50, textvariable=self.wos_file_path)
         self.wos_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_wos_path)
-
-        self.ssci_label = tkinter.Label(self.window, text="SSCI文件:")
-        self.ssci_input = tkinter.Entry(self.window, width=50, textvariable=self.ssci_file_path)
-        self.ssci_path_button = tkinter.Button(self.window, text="选择文件", command=self.select_ssci_path)
 
         self.path_label = tkinter.Label(self.window, text="保存路径：")
         self.path_input = tkinter.Entry(self.window, width=50, textvariable=self.path)
@@ -1392,11 +1149,8 @@ class Spider_gui(object):
         self.author_input = tkinter.Entry(self.window,width=50)
         self.author_tip = tkinter.Label(self.window,text="(示例: Mao, ErKe)")
 
-        self.StartYear_label = tkinter.Label(self.window, text="引用区分年度：")
-        self.StartYear_input = tkinter.Entry(self.window, width=50)
 
-
-        self.progress_bar = tkinter.ttk.Progressbar(self.window,orient="horizontal", length=400, mode='determinate',variable=self.progress_value, maximum=100)
+        self.progress_bar = tkinter.ttk.Progressbar(self.window,orient="horizontal", length=350, mode='determinate',variable=self.progress_value, maximum=100)
         self.processing_info = tkinter.Listbox(self.window, width=50)
 
         self.bgn_button = tkinter.Button(self.window, command=self.begin_crawl, text="开始")
@@ -1406,49 +1160,38 @@ class Spider_gui(object):
         self.wos_input.grid(row=1, column=2)
         self.wos_path_button.grid(row=1, column=3)
 
-        self.ssci_label.grid(row=2, column=1)
-        self.ssci_input.grid(row=2, column=2)
-        self.ssci_path_button.grid(row=2, column=3)
+        self.path_label.grid(row=2, column=1)
+        self.path_input.grid(row=2, column=2)
+        self.path_button.grid(row=2, column=3)
 
-        self.path_label.grid(row=3, column=1)
-        self.path_input.grid(row=3, column=2)
-        self.path_button.grid(row=3, column=3)
+        self.ei_path_label.grid(row=3, column=1)
+        self.ei_path_input.grid(row=3, column=2)
+        self.ei_path_button.grid(row=3, column=3)
 
-        self.ei_path_label.grid(row=4, column=1)
-        self.ei_path_input.grid(row=4, column=2)
-        self.ei_path_button.grid(row=4, column=3)
-
-        self.bianhao_label.grid(row=5, column=1)
-        self.bianhao_input.grid(row=5, column=2, sticky="w")
-        self.JCR_checkbutton.grid(row=5, column=2 )
-        self.fenqu_checkbutton.grid(row=5, column=2, sticky='e')
+        self.bianhao_label.grid(row=4, column=1)
+        self.bianhao_input.grid(row=4, column=2, sticky="w")
+        self.JCR_checkbutton.grid(row=4, column=2 )
+        self.fenqu_checkbutton.grid(row=4, column=2, sticky='e')
 
 
-        self.yinyong_checkbutton.grid(row=6, column=2, sticky="w")
-        self.contribution_checkbutton.grid(row=6,column=2)
-        self.hcp_checkbutton.grid(row=6,column=2, padx=15,sticky="e")
+        self.yinyong_checkbutton.grid(row=5, column=2, sticky="w")
+        self.contribution_checkbutton.grid(row=5,column=2)
+        self.hcp_checkbutton.grid(row=5,column=2, padx=15,sticky="e")
 
-        self.author_label.grid(row=7, column=1)
-        self.author_input.grid(row=7,column=2, stick="w")
-        self.author_tip.grid(row=7,column=3,stick="w")
+        self.author_label.grid(row=6, column=1)
+        self.author_input.grid(row=6,column=2, stick="w")
+        self.author_tip.grid(row=6,column=3,stick="w")
 
-        self.StartYear_label.grid(row=8, column=1)
-        self.StartYear_input.grid(row=8, column=2, stick="w")
-
-
-        self.progress_bar.grid(row=9,column=2)
-        self.processing_info.grid(row=10, column=2)
-        self.bgn_button.grid(row=11, column=2, sticky="e")
+        self.progress_bar.grid(row=7,column=2)
+        self.processing_info.grid(row=8, column=2)
+        self.bgn_button.grid(row=9, column=2, sticky="e")
 
     def begin_crawl(self):
-
-        global citation_start_year
 
         url = str(self.wos_input.get()).strip()
         save_path = str(self.path.get()).strip()
         rpt_num = str(self.bianhao_input.get()).strip()
         author = str(self.author_input.get()).strip()
-        citation_start_year = str(self.StartYear_input.get()).strip()
         try:
             urllib.parse.urlparse(url)
             if(len(rpt_num)<1):

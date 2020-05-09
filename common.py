@@ -7,6 +7,7 @@ from lxml import etree
 import urllib.robotparser
 import urllib.parse
 import urllib.request
+import socket
 
 
 download_url_total = 0
@@ -93,6 +94,10 @@ class Throttle:
 def download(url, headers, proxy, num_retries, data=None):
     global download_url_total
 
+    timeout = 10  # 单位秒
+    socket.setdefaulttimeout(timeout)
+
+    html = ""
     download_url_total += 1
     print('Downloading: %d  %s' % (download_url_total, url))
     request = urllib.request.Request(url=url, headers=headers)
@@ -104,7 +109,7 @@ def download(url, headers, proxy, num_retries, data=None):
         response = opener.open(request)
         response.encoding = "utf-8"
         html = response.read().decode("utf-8")
-        #print(html)
+        # print(html)
 
         code = response.code
 
@@ -118,11 +123,25 @@ def download(url, headers, proxy, num_retries, data=None):
                 return download(url, headers, proxy, num_retries - 1, data)
         else:
             code = None
+            if num_retries > 0:
+                return download(url, headers, proxy, num_retries - 1, data)
     except urllib.error.HTTPError as e:
 
         print("Download error: %s" % e.reason)
+        if num_retries > 0:
+            return download(url, headers, proxy, num_retries - 1, data)
 
-    return html
+    except urllib.error.ContentTooShortError as e:
+        print("Download error: %s" % e.reason)
+        if num_retries > 0:
+            return download(url, headers, proxy, num_retries - 1, data)
+    except Exception as e:
+
+        print("Download error: timeout")
+        if num_retries > 0:
+            return download(url, headers, proxy, num_retries - 1, data)
+    else:
+        return html
 
 
 def normalize(seed_url, link):

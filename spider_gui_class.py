@@ -19,6 +19,7 @@ class Spider_gui(object):
         self.path = tkinter.StringVar()
         self.jcr_opt = tkinter.BooleanVar()
         self.fenqu_opt = tkinter.BooleanVar()
+        self.start_year = tkinter.StringVar()  #引用区分年度
 
         self.jcr_opt.set(False)
         self.fenqu_opt.set(False)
