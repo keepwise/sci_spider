@@ -7,8 +7,11 @@ from lxml import etree
 import urllib.robotparser
 import urllib.parse
 import urllib.request
+import urllib.error
+
 import socket
 
+socket.setdefaulttimeout(30)
 
 download_url_total = 0
 def link_crawler(seed_url, link_regex=None, delay=5, max_depth=-1, max_urls=-1, headers=None, user_agent='wswp',
@@ -100,12 +103,15 @@ def download(url, headers, proxy, num_retries, data=None):
     html = ""
     download_url_total += 1
     print('Downloading: %d  %s' % (download_url_total, url))
-    request = urllib.request.Request(url=url, headers=headers)
+
+    html = ""
+    req = urllib.request.Request(url=url, headers=headers)
     opener = urllib.request.build_opener()
     if proxy:
         proxy_params = {urllib.parse.urlparse(url).scheme: proxy}
         opener.add_handler(urllib.ProxyHandler(proxy_params))
     try:
+
         response = opener.open(request)
         response.encoding = "utf-8"
         html = response.read().decode("utf-8")
@@ -142,6 +148,29 @@ def download(url, headers, proxy, num_retries, data=None):
             return download(url, headers, proxy, num_retries - 1, data)
     else:
         return html
+
+        with opener.open(req) as response:
+            response.encoding = "utf-8"
+            html = response.read().decode("utf-8")
+            code = response.code
+
+    except urllib.error.URLError as e:
+        print('Download error: urlerror')
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
+    except urllib.error.HTTPError as e:
+        print("Download error: httperror")
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
+    except socket.timeout as e:
+        print("Download error: timeout ")
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
+    except Exception as e:
+        print("Download error catch all")
+        time.sleep(10)
+        return download(url, headers, proxy, num_retries - 1, data)
+    return html
 
 
 def normalize(seed_url, link):
